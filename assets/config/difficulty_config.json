@@ -1,0 +1,207 @@
+{
+  "difficultyLevels": [
+    {
+      "level": "beginner",
+      "name": "difficultyBeginner",
+      "maxStrategyLevel": "basic",
+      "difficultyScore": 0.1,
+      "minExpectedTime": 300,
+      "maxExpectedTime": 600,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 45,
+          "maxFilledCells": 55,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "basic",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 47,
+          "maxFilledCells": 57,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "basic",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 48,
+          "maxFilledCells": 58,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "basic",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "easy",
+      "name": "difficultyEasy",
+      "maxStrategyLevel": "intermediate",
+      "difficultyScore": 0.3,
+      "minExpectedTime": 600,
+      "maxExpectedTime": 1200,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 38,
+          "maxFilledCells": 45,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 40,
+          "maxFilledCells": 47,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 42,
+          "maxFilledCells": 48,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "medium",
+      "name": "difficultyMedium",
+      "maxStrategyLevel": "intermediate",
+      "difficultyScore": 0.5,
+      "minExpectedTime": 1200,
+      "maxExpectedTime": 1800,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 32,
+          "maxFilledCells": 38,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 34,
+          "maxFilledCells": 40,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 36,
+          "maxFilledCells": 42,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "intermediate",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "hard",
+      "name": "difficultyHard",
+      "maxStrategyLevel": "advanced",
+      "difficultyScore": 0.7,
+      "minExpectedTime": 1800,
+      "maxExpectedTime": 2700,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 26,
+          "maxFilledCells": 32,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "advanced",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 28,
+          "maxFilledCells": 34,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "advanced",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 30,
+          "maxFilledCells": 36,
+          "minStrategyLevel": "intermediate",
+          "maxStrategyLevel": "advanced",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "expert",
+      "name": "difficultyExpert",
+      "maxStrategyLevel": "expert",
+      "difficultyScore": 0.85,
+      "minExpectedTime": 2700,
+      "maxExpectedTime": 3600,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 22,
+          "maxFilledCells": 26,
+          "minStrategyLevel": "advanced",
+          "maxStrategyLevel": "expert",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 24,
+          "maxFilledCells": 28,
+          "minStrategyLevel": "advanced",
+          "maxStrategyLevel": "expert",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 26,
+          "maxFilledCells": 30,
+          "minStrategyLevel": "advanced",
+          "maxStrategyLevel": "expert",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "master",
+      "name": "difficultyMaster",
+      "maxStrategyLevel": "master",
+      "difficultyScore": 1.0,
+      "minExpectedTime": 3600,
+      "maxExpectedTime": 5400,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 17,
+          "maxFilledCells": 22,
+          "minStrategyLevel": "expert",
+          "maxStrategyLevel": "master",
+          "requiredStrategies": []
+        },
+        "diagonal": {
+          "minFilledCells": 19,
+          "maxFilledCells": 24,
+          "minStrategyLevel": "expert",
+          "maxStrategyLevel": "master",
+          "requiredStrategies": []
+        },
+        "window": {
+          "minFilledCells": 22,
+          "maxFilledCells": 26,
+          "minStrategyLevel": "expert",
+          "maxStrategyLevel": "master",
+          "requiredStrategies": []
+        }
+      }
+    },
+    {
+      "level": "custom",
+      "name": "difficultyCustom",
+      "maxStrategyLevel": "master",
+      "difficultyScore": 0.0,
+      "minExpectedTime": 0,
+      "maxExpectedTime": 0,
+      "gameTypeConfigs": {
+        "standard": {
+          "minFilledCells": 0,
+          "maxFilledCells": 81,
+          "minStrategyLevel": "basic",
+          "maxStrategyLevel": "master",
+          "requiredStrategies": []
+        }
+      }
+    }
+  ]
+}
