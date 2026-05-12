@@ -31,21 +31,29 @@ class HistoryManager {
   HistoryManager addCommand(BoardCommand cmd) {
     final newCommands = List<BoardCommand>.from(_commands);
     newCommands..removeRange(_currentIndex + 1, newCommands.length)..add(cmd);
-    var newIndex = newCommands.length - 1;
-    var currentInitialBoard = initialBoard;
+    final newIndex = newCommands.length - 1;
     
-    // 当超过最大大小时，从头部移除多余的命令，并将这些命令的效果合并到initialBoard中
-    while (newCommands.length > maxSize) {
-      final removedCommand = newCommands.removeAt(0);
-      currentInitialBoard = removedCommand.execute(currentInitialBoard);
-      newIndex--;
+    if (newCommands.length > maxSize) {
+      final excessCount = newCommands.length - maxSize;
+      var newInitialBoard = initialBoard;
+      
+      // 重放被删除的命令到初始棋盘，使initialBoard更新为删除这些命令后的状态
+      for (int i = 0; i < excessCount; i++) {
+        newInitialBoard = newCommands[i].execute(newInitialBoard);
+      }
+      
+      // 从头部删除多余的命令
+      final trimmedCommands = newCommands.sublist(excessCount);
+      final trimmedIndex = newIndex - excessCount;
+      
+      return HistoryManager(
+        initialBoard: newInitialBoard,
+        commands: trimmedCommands,
+        currentIndex: trimmedIndex,
+      );
     }
     
-    return HistoryManager(
-      initialBoard: currentInitialBoard,
-      commands: newCommands,
-      currentIndex: newIndex,
-    );
+    return HistoryManager(initialBoard: initialBoard, commands: newCommands, currentIndex: newIndex);
   }
 
   /// 撤销
