@@ -1,125 +1,117 @@
 import 'package:sudoku/models/board.dart';
+import 'package:sudoku/models/board_commands.dart';
 
-/// 历史记录管理器，负责管理游戏状态的历史记录
+/// 基于命令模式的历史记录管理器
+///
+/// 通过记录操作命令而非棋盘快照来实现撤销/重做。
+/// 撤销时从 initialBoard 重放命令列表到目标索引。
 class HistoryManager {
+  HistoryManager({required this.initialBoard, List<BoardCommand>? commands, int? currentIndex})
+    : _commands = commands ?? [],
+      _currentIndex = currentIndex ?? -1;
 
-  /// 创建历史记录管理器
-  const HistoryManager({
-    required this.states,
-    required this.currentIndex,
-    this.maxSize = 50,
-  });
+  /// 从旧版快照列表创建（向后兼容反序列化）
+  /// 旧存档加载后历史记录被重置，无法撤销到中间状态
+  // ignore: avoid_unused_constructor_parameters
+  factory HistoryManager.fromSnapshotList(List<Board> states, {int currentIndex = -1}) {
+    final initialBoard = states.isNotEmpty ? states.first : throw ArgumentError('states不能为空');
+    // 使用最后一个快照作为当前棋盘，但历史记录为空
+    // 旧存档加载后可以正常游戏，但无法撤销到加载前的中间状态
+    return HistoryManager(initialBoard: initialBoard);
+  }
 
-  /// 创建带有初始状态的历史记录管理器
-  factory HistoryManager.withInitialState(Board initialState, {int maxSize = 50}) => HistoryManager(
-        states: [initialState],
-        currentIndex: 0,
-        maxSize: maxSize,
-      );
+  final Board initialBoard;
+  final List<BoardCommand> _commands;
+  final int _currentIndex;
 
-  /// 创建空的历史记录管理器
-  factory HistoryManager.empty({int maxSize = 50}) => HistoryManager(
-        states: [],
-        currentIndex: -1,
-        maxSize: maxSize,
-      );
-  final List<Board> states;
-  final int currentIndex;
-  final int maxSize;
+  static const int defaultMaxSize = 50;
+  int maxSize = defaultMaxSize;
 
-  /// 添加新状态到历史记录
-  HistoryManager addState(Board newState) {
-    // 如果当前不在历史记录的末尾，截断历史记录
-    final newStates = states.sublist(0, currentIndex + 1)..add(newState);
+  /// 添加命令（截断后续命令）
+  HistoryManager addCommand(BoardCommand cmd) {
+    final newCommands = List<BoardCommand>.from(_commands);
+    newCommands..removeRange(_currentIndex + 1, newCommands.length)..add(cmd);
+    var newIndex = newCommands.length - 1;
+    var currentInitialBoard = initialBoard;
     
-    // 限制历史记录大小
-    int newIndex = newStates.length - 1;
-    if (newStates.length > maxSize) {
-      newStates.removeAt(0);
+    // 当超过最大大小时，从头部移除多余的命令，并将这些命令的效果合并到initialBoard中
+    while (newCommands.length > maxSize) {
+      final removedCommand = newCommands.removeAt(0);
+      currentInitialBoard = removedCommand.execute(currentInitialBoard);
       newIndex--;
     }
-
+    
     return HistoryManager(
-      states: newStates,
+      initialBoard: currentInitialBoard,
+      commands: newCommands,
       currentIndex: newIndex,
-      maxSize: maxSize,
     );
   }
 
-  /// 撤销操作，返回上一个状态
+  /// 撤销
   (HistoryManager, Board?) undo() {
-    if (currentIndex <= 0) {
-      return (this, null);
-    }
-
-    final newIndex = currentIndex - 1;
-    final newHistory = HistoryManager(
-      states: states,
-      currentIndex: newIndex,
-      maxSize: maxSize,
+    if (_currentIndex < 0) return (this, null);
+    final newIndex = _currentIndex - 1;
+    return (
+      HistoryManager(initialBoard: initialBoard, commands: _commands, currentIndex: newIndex),
+      _replay(newIndex),
     );
-
-    return (newHistory, states[newIndex]);
   }
 
-  /// 重做操作，返回下一个状态
+  /// 重做
   (HistoryManager, Board?) redo() {
-    if (currentIndex >= states.length - 1) {
-      return (this, null);
-    }
-
-    final newIndex = currentIndex + 1;
-    final newHistory = HistoryManager(
-      states: states,
-      currentIndex: newIndex,
-      maxSize: maxSize,
-    );
-
-    return (newHistory, states[newIndex]);
-  }
-
-  /// 检查是否可以撤销
-  bool canUndo() => currentIndex > 0;
-
-  /// 检查是否可以重做
-  bool canRedo() => currentIndex < states.length - 1;
-
-  /// 清空历史记录，只保留当前状态
-  HistoryManager clear() {
-    if (states.isEmpty) {
-      return this;
-    }
-
-    return HistoryManager(
-      states: [states[currentIndex]],
-      currentIndex: 0,
-      maxSize: maxSize,
+    if (_currentIndex >= _commands.length - 1) return (this, null);
+    final newIndex = _currentIndex + 1;
+    return (
+      HistoryManager(initialBoard: initialBoard, commands: _commands, currentIndex: newIndex),
+      _replay(newIndex),
     );
   }
 
-  /// 获取当前状态
-  Board? get currentState {
-    if (states.isEmpty || currentIndex < 0) {
-      return null;
+  /// 重放命令到指定索引
+  Board _replay(int upToIndex) {
+    var board = initialBoard;
+    for (int i = 0; i <= upToIndex; i++) {
+      board = _commands[i].execute(board);
     }
-    return states[currentIndex];
+    return board;
   }
 
-  /// 获取历史记录长度
-  int get length => states.length;
+  bool canUndo() => _currentIndex >= 0;
+  bool canRedo() => _currentIndex < _commands.length - 1;
+  int get length => _currentIndex + 1;
+
+  /// 获取当前棋盘（通过重放命令）
+  Board get currentBoard {
+    if (_currentIndex < 0) return initialBoard;
+    return _replay(_currentIndex);
+  }
+
+  /// 清空历史
+  HistoryManager clear() => HistoryManager(initialBoard: initialBoard);
+
+  /// 获取命令列表（用于序列化）
+  List<BoardCommand> get commands => List.unmodifiable(_commands);
+  int get currentIndex => _currentIndex;
+
+  /// 生成快照列表（用于向后兼容序列化）
+  List<Board> get states {
+    final result = <Board>[initialBoard];
+    var board = initialBoard;
+    for (final cmd in _commands) {
+      board = cmd.execute(board);
+      result.add(board);
+    }
+    return result;
+  }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is HistoryManager &&
-        other.states == states &&
-        other.currentIndex == currentIndex &&
-        other.maxSize == maxSize;
+    if (other is! HistoryManager) return false;
+    return _currentIndex == other._currentIndex;
   }
 
   @override
-  int get hashCode => Object.hash(states, currentIndex, maxSize);
-
-  @override
-  String toString() => 'HistoryManager(states: ${states.length}, currentIndex: $currentIndex, maxSize: $maxSize)';
+  int get hashCode => _currentIndex.hashCode;
 }
