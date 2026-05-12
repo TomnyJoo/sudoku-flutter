@@ -1,5 +1,6 @@
 import 'package:sudoku/models/difficulty.dart';
 import 'package:sudoku/models/region.dart';
+import 'package:sudoku/utils/app_logger.dart';
 
 /// 数独游戏类型枚举，定义不同类型的数独游戏
 enum GameType {
@@ -50,11 +51,11 @@ class GameTypeConfig {  /// 描述信息国际化键
         try {
           return localizations[nameKey] ?? nameKey;
         } catch (e) {
-          // 忽略异常
+          AppLogger.warning('Failed to access localization property for nameKey: $nameKey', e);
         }
       }
     } catch (e) {
-      // 忽略异常
+      AppLogger.warning('Failed to get localized name for nameKey: $nameKey', e);
     }
     return nameKey;
   }
@@ -74,11 +75,11 @@ class GameTypeConfig {  /// 描述信息国际化键
         try {
           return localizations[descriptionKey] ?? descriptionKey;
         } catch (e) {
-          // 忽略异常
+          AppLogger.warning('Failed to access localization property for descriptionKey: $descriptionKey', e);
         }
       }
     } catch (e) {
-      // 忽略异常
+      AppLogger.warning('Failed to get localized description for descriptionKey: $descriptionKey', e);
     }
     return descriptionKey;
   }
@@ -103,55 +104,6 @@ class GameTypeConfig {  /// 描述信息国际化键
 
   /// 获取用于调试的字符串表示（不依赖国际化）
   String toDebugString() => 'GameTypeConfig(type: $type, nameKey: $nameKey, boardSize: $boardSize)';
-
-  /// 获取用于显示的字符串表示（考虑国际化）
-  String toDisplayString({final dynamic localizations}) {
-    // 使用本地化字符串或默认值
-    final gameName = getLocalizedName(localizations);
-    
-    // 简化本地化逻辑
-    String difficultyStr, customStr, regionTypesStr, boardSizeStr;
-    
-    try {
-      if (localizations is Map) {
-        // 难度选择文本
-        difficultyStr = supportsDifficulty 
-            ? (localizations['supportsDifficulty'] ?? '支持难度选择')
-            : (localizations['fixedDifficulty'] ?? '固定难度');
-        
-        // 自定义规则文本
-        customStr = supportsCustomRules
-            ? (localizations['supportsCustomRules'] ?? '支持自定义规则')
-            : (localizations['standardRules'] ?? '标准规则');
-        
-        // 区域类型文本
-        final regionTypesLabel = localizations['regionTypes'] ?? '区域类型';
-        final regionTypesList = supportedRegionTypes.map((type) => 
-            type.getLocalizedName(localizations)).join('、');
-        regionTypesStr = '$regionTypesLabel: $regionTypesList';
-        
-        // 棋盘尺寸文本
-        final boardSizeLabel = localizations['boardSize'] ?? '棋盘';
-        boardSizeStr = '$boardSizeLabel: $boardSize×$boardSize';
-      } else {
-        // 默认值
-        difficultyStr = supportsDifficulty ? '支持难度选择' : '固定难度';
-        customStr = supportsCustomRules ? '支持自定义规则' : '标准规则';
-        regionTypesStr = '区域类型: ${supportedRegionTypes.map((type) => 
-            type.getLocalizedName(null)).join('、')}';
-        boardSizeStr = '$boardSize×$boardSize棋盘';
-      }
-    } catch (e) {
-      // 异常时使用默认值
-      difficultyStr = supportsDifficulty ? '支持难度选择' : '固定难度';
-      customStr = supportsCustomRules ? '支持自定义规则' : '标准规则';
-      regionTypesStr = '区域类型: ${supportedRegionTypes.map((type) => 
-          type.getLocalizedName(null)).join('、')}';
-      boardSizeStr = '$boardSize×$boardSize棋盘';
-    }
-    
-    return '$gameName - $boardSizeStr, $difficultyStr, $customStr, $regionTypesStr';
-  }
 
   @override
   bool operator ==(final Object other) {
@@ -285,8 +237,4 @@ extension GameTypeExtension on GameType {
   /// 获取本地化描述
   String getLocalizedDescription(final dynamic localizations) => 
     config.getLocalizedDescription(localizations);
-  
-  /// 获取显示字符串
-  String toDisplayString({final dynamic localizations}) => 
-    config.toDisplayString(localizations: localizations);
 }

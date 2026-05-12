@@ -2,7 +2,7 @@ import 'package:meta/meta.dart';
 import 'package:sudoku/index.dart';
 
 /// 通用游戏服务类，负责游戏状态管理、持久化和用户操作
-/// 整合 GameLogic 处理游戏规则，通过 GameStorageService 统一处理持久化
+/// 整合游戏逻辑处理游戏规则，通过 GameStorageService 统一处理持久化
 ///
 /// 泛型 B 表示具体的 Board 子类型
 /// 通过 boardFromJson 工厂函数参数支持所有 Board 类型的序列化/反序列化
@@ -11,12 +11,10 @@ class GameService<B extends Board> {
     required this.gameType,
     required GameValidator validator,
     required this.boardFromJson,
-  }) : _validator = validator,
-       _gameLogic = GameLogic();
+  }) : _validator = validator;
 
   final String gameType;
   final GameValidator _validator;
-  final GameLogic _gameLogic;
 
   /// 从 JSON 创建 Board 实例的工厂函数（由子类或构造时提供）
   final B Function(Map<String, dynamic>) boardFromJson;
@@ -111,11 +109,11 @@ class GameService<B extends Board> {
       actualPuzzle = _createEmptyKillerBoardWithCages(solution) as B;
     }
 
-    // 构建历史记录管理器
-    final history = HistoryManager.withInitialState(actualPuzzle);
+    // 构建历史记录管理器（命令模式）
+    final history = HistoryManager(initialBoard: actualPuzzle);
 
     // 构建统计服务
-    final stats = GameStats(
+    final stats = SessionStatistics(
       board: actualPuzzle,
       mistakes: 0,
       totalMoves: 0,
@@ -205,7 +203,7 @@ class GameService<B extends Board> {
   }
 
   /// 加载游戏状态
-  Future<GameState<B>?> loadGameState(String gameId) async => GameStorageService.loadGameState(gameId, boardFromJson) as Future<GameState<B>?>?;
+  Future<GameState<B>?> loadGameState(String gameId) async => GameStorageService.loadGameState<B>(gameId, boardFromJson);
 
   /// 清除保存的游戏
   Future<void> clearSavedGame(String gameId) async {
@@ -233,7 +231,7 @@ class GameService<B extends Board> {
     B? board,
     B? initialBoard,
     HistoryManager? history,
-    GameStats? stats,
+    SessionStatistics? stats,
     bool? isCompleted,
     int? mistakes,
     int? elapsedTime,
@@ -243,6 +241,7 @@ class GameService<B extends Board> {
     DateTime? startTime,
     DateTime? completionTime,
     bool? isShowingSolution,
+    B? savedBoard,
   }) => state.createInstance(
     board: board ?? state.board,
     initialBoard: initialBoard ?? state.initialBoard,
@@ -259,17 +258,23 @@ class GameService<B extends Board> {
     isMarkMode: isMarkMode ?? state.isMarkMode,
     isAutoMarkMode: isAutoMarkMode ?? state.isAutoMarkMode,
     hintsUsed: hintsUsed ?? state.hintsUsed,
+    savedBoard: savedBoard ?? state.savedBoard,
   );
 
-  /// 更新棋盘状态
+  /// 更新棋盘状态（无历史记录，用于选择单元格、自动标记等UI操作）
   GameState<B> updateBoard(GameState<B> state, B newBoard) {
     if (state.isShowingSolution) return state;
+    return _copyState(state, board: newBoard);
+  }
 
-    final newHistory = state.history.addState(newBoard);
+  /// 通过命令更新棋盘状态（有历史记录，用于用户主动操作）
+  GameState<B> updateBoardWithCommand(GameState<B> state, BoardCommand command) {
+    if (state.isShowingSolution) return state;
+    final newBoard = command.execute(state.board) as B;
+    final newHistory = state.history.addCommand(command);
     final newStats = state.stats
         .updateBoard(newBoard)
         .updateTotalMoves(newHistory.length - 1);
-
     return _copyState(state,
       board: newBoard,
       history: newHistory,
@@ -320,8 +325,8 @@ class GameService<B extends Board> {
 
   /// 重置游戏到初始状态
   GameState<B> resetGameState(GameState<B> state) {
-    final newHistory = HistoryManager.withInitialState(state.initialBoard);
-    final newStats = GameStats(
+    final newHistory = HistoryManager(initialBoard: state.initialBoard);
+    final newStats = SessionStatistics(
       board: state.initialBoard,
       mistakes: 0,
       totalMoves: 0,
@@ -341,32 +346,39 @@ class GameService<B extends Board> {
     );
   }
 
-  /// 显示完整答案
+  /// 显示完整答案（不经过历史记录，通过 savedBoard 恢复）
   GameState<B> showSolution(GameState<B> state) {
-    final boardCopy = state.board.copyWith() as B;
-    final newHistory = state.history.addState(boardCopy);
+    final size = state.solution.size;
+    final newCells = <List<Cell>>[];
 
-    final solutionBoard = _gameLogic.showSolution(state.board, state.solution, state.initialBoard) as B;
+    for (int row = 0; row < size; row++) {
+      final rowCells = <Cell>[];
+      for (int col = 0; col < size; col++) {
+        final solutionCell = state.solution.getCell(row, col);
+        final initialCell = state.initialBoard.getCell(row, col);
+
+        rowCells.add(Cell(
+          row: row,
+          col: col,
+          value: solutionCell.value,
+          isFixed: initialCell.isFixed,
+          candidates: const {},
+        ));
+      }
+      newCells.add(rowCells);
+    }
+
+    final solutionBoard = state.solution.createInstance(newCells, regions: state.solution.regions) as B;
 
     return _copyState(state,
       board: solutionBoard,
-      history: newHistory,
       isShowingSolution: true,
     );
   }
 
-  /// 隐藏答案，返回游戏状态
-  GameState<B> hideSolution(GameState<B> state) {
-    // 确保使用有效的棋盘状态
-    final (newHistory, previousBoard) = state.history.undo();
-    final currentBoard = previousBoard ?? state.board;
-
-    return _copyState(state,
-      board: currentBoard as B,
-      history: newHistory,
-      isShowingSolution: false,
-    );
-  }
+  /// 隐藏答案，返回游戏状态（从 savedBoard 恢复，savedBoard 由 GameState 层面管理）
+  GameState<B> hideSolution(GameState<B> state) =>
+     _copyState(state,isShowingSolution: false,);
 
   /// 记录错误
   GameState<B> recordMistake(GameState<B> state) {
@@ -503,31 +515,27 @@ class GameService<B extends Board> {
     final currentCell = gameState.board.getCell(row, col);
     if (currentCell.isFixed) return gameState;
 
-    B newBoard;
+    BoardCommand command;
     if (isMarkMode) {
       // 标记模式：切换候选数
       if (value == null) return gameState;
-      newBoard = gameState.board.toggleCellCandidate(row, col, value) as B;
+      command = ToggleCandidateCommand(row: row, col: col, candidate: value);
     } else {
-      // 普通模式：设置值
-      newBoard = gameState.board.setCellValue(row, col, value) as B;
-
-      // 验证值是否违反数独规则，标记错误状态
+      // 普通模式：设置值（含错误标记）
+      bool isError = false;
       if (value != null) {
-        // 临时移除该值，检查是否可以合法放置
         final tempBoard = gameState.board.setCellValue(row, col, null) as B;
-        final isValid = _validator.isValidMove(tempBoard, row, col, value);
-        newBoard = newBoard.setCellError(row, col, !isValid) as B;
+        isError = !_validator.isValidMove(tempBoard, row, col, value);
       }
+      command = SetValueCommand(row: row, col: col, value: value, isError: isError);
     }
 
-    // 使用GameService的updateBoard方法更新状态
-    var newState = updateBoard(gameState, newBoard);
+    // 使用命令模式更新状态
+    var newState = updateBoardWithCommand(gameState, command);
 
     // 检查游戏是否完成（只在普通模式且游戏未完成时检查）
     if (!isMarkMode && !newState.isCompleted) {
-      final tempState = newState.copyWith(board: newBoard);
-      if (isGameCompleted(tempState)) {
+      if (isGameCompleted(newState)) {
         newState = markAsCompleted(newState);
       }
     }

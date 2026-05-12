@@ -2,6 +2,8 @@
   "gameTypes": {
     "standard": {
       "name": "Standard Sudoku",
+      "logicClassName": "StandardSudokuGame",
+      "rendererClassName": "StandardBoardRenderer",
       "localization": {
         "nameKey": "gameTypeStandardName",
         "descriptionKey": "gameTypeStandardDescription",
@@ -33,6 +35,8 @@
     },
     "diagonal": {
       "name": "Diagonal Sudoku",
+      "logicClassName": "DiagonalSudokuGame",
+      "rendererClassName": "DiagonalBoardRenderer",
       "localization": {
         "nameKey": "gameTypeDiagonalName",
         "descriptionKey": "gameTypeDiagonalDescription",
@@ -66,6 +70,8 @@
     },
     "window": {
       "name": "Window Sudoku",
+      "logicClassName": "WindowSudokuGame",
+      "rendererClassName": "WindowBoardRenderer",
       "localization": {
         "nameKey": "gameTypeWindowName",
         "descriptionKey": "gameTypeWindowDescription",
@@ -99,6 +105,8 @@
     },
     "jigsaw": {
       "name": "Jigsaw Sudoku",
+      "logicClassName": "JigsawSudokuGame",
+      "rendererClassName": "JigsawBoardRenderer",
       "localization": {
         "nameKey": "gameTypeJigsawName",
         "descriptionKey": "gameTypeJigsawDescription",
@@ -130,6 +138,8 @@
     },
     "killer": {
       "name": "Killer Sudoku",
+      "logicClassName": "KillerSudokuGame",
+      "rendererClassName": "KillerBoardRenderer",
       "localization": {
         "nameKey": "gameTypeKillerName",
         "descriptionKey": "gameTypeKillerDescription",
@@ -163,6 +173,8 @@
     },
     "samurai": {
       "name": "Samurai Sudoku",
+      "logicClassName": "SamuraiSudokuGame",
+      "rendererClassName": "StandardBoardRenderer",
       "localization": {
         "nameKey": "gameTypeSamuraiName",
         "descriptionKey": "gameTypeSamuraiDescription",

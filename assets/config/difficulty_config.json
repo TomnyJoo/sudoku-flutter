@@ -11,6 +11,8 @@
         "standard": {
           "minFilledCells": 45,
           "maxFilledCells": 55,
+          "emptyRatio": 0.44,
+          "minGivens": 45,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "basic",
           "requiredStrategies": []
@@ -18,6 +20,8 @@
         "diagonal": {
           "minFilledCells": 47,
           "maxFilledCells": 57,
+          "emptyRatio": 0.42,
+          "minGivens": 47,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "basic",
           "requiredStrategies": []
@@ -25,6 +29,8 @@
         "window": {
           "minFilledCells": 48,
           "maxFilledCells": 58,
+          "emptyRatio": 0.41,
+          "minGivens": 48,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "basic",
           "requiredStrategies": []
@@ -42,6 +48,8 @@
         "standard": {
           "minFilledCells": 38,
           "maxFilledCells": 45,
+          "emptyRatio": 0.53,
+          "minGivens": 38,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -49,6 +57,8 @@
         "diagonal": {
           "minFilledCells": 40,
           "maxFilledCells": 47,
+          "emptyRatio": 0.51,
+          "minGivens": 40,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -56,6 +66,8 @@
         "window": {
           "minFilledCells": 42,
           "maxFilledCells": 48,
+          "emptyRatio": 0.48,
+          "minGivens": 42,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -73,6 +85,8 @@
         "standard": {
           "minFilledCells": 32,
           "maxFilledCells": 38,
+          "emptyRatio": 0.60,
+          "minGivens": 32,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -80,6 +94,8 @@
         "diagonal": {
           "minFilledCells": 34,
           "maxFilledCells": 40,
+          "emptyRatio": 0.58,
+          "minGivens": 34,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -87,6 +103,8 @@
         "window": {
           "minFilledCells": 36,
           "maxFilledCells": 42,
+          "emptyRatio": 0.56,
+          "minGivens": 36,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "intermediate",
           "requiredStrategies": []
@@ -104,6 +122,8 @@
         "standard": {
           "minFilledCells": 26,
           "maxFilledCells": 32,
+          "emptyRatio": 0.68,
+          "minGivens": 26,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "advanced",
           "requiredStrategies": []
@@ -111,6 +131,8 @@
         "diagonal": {
           "minFilledCells": 28,
           "maxFilledCells": 34,
+          "emptyRatio": 0.65,
+          "minGivens": 28,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "advanced",
           "requiredStrategies": []
@@ -118,6 +140,8 @@
         "window": {
           "minFilledCells": 30,
           "maxFilledCells": 36,
+          "emptyRatio": 0.63,
+          "minGivens": 30,
           "minStrategyLevel": "intermediate",
           "maxStrategyLevel": "advanced",
           "requiredStrategies": []
@@ -135,6 +159,8 @@
         "standard": {
           "minFilledCells": 22,
           "maxFilledCells": 26,
+          "emptyRatio": 0.73,
+          "minGivens": 22,
           "minStrategyLevel": "advanced",
           "maxStrategyLevel": "expert",
           "requiredStrategies": []
@@ -142,6 +168,8 @@
         "diagonal": {
           "minFilledCells": 24,
           "maxFilledCells": 28,
+          "emptyRatio": 0.70,
+          "minGivens": 24,
           "minStrategyLevel": "advanced",
           "maxStrategyLevel": "expert",
           "requiredStrategies": []
@@ -149,6 +177,8 @@
         "window": {
           "minFilledCells": 26,
           "maxFilledCells": 30,
+          "emptyRatio": 0.68,
+          "minGivens": 26,
           "minStrategyLevel": "advanced",
           "maxStrategyLevel": "expert",
           "requiredStrategies": []
@@ -166,6 +196,8 @@
         "standard": {
           "minFilledCells": 17,
           "maxFilledCells": 22,
+          "emptyRatio": 0.79,
+          "minGivens": 17,
           "minStrategyLevel": "expert",
           "maxStrategyLevel": "master",
           "requiredStrategies": []
@@ -173,6 +205,8 @@
         "diagonal": {
           "minFilledCells": 19,
           "maxFilledCells": 24,
+          "emptyRatio": 0.77,
+          "minGivens": 19,
           "minStrategyLevel": "expert",
           "maxStrategyLevel": "master",
           "requiredStrategies": []
@@ -180,6 +214,8 @@
         "window": {
           "minFilledCells": 22,
           "maxFilledCells": 26,
+          "emptyRatio": 0.73,
+          "minGivens": 22,
           "minStrategyLevel": "expert",
           "maxStrategyLevel": "master",
           "requiredStrategies": []
@@ -197,6 +233,8 @@
         "standard": {
           "minFilledCells": 0,
           "maxFilledCells": 81,
+          "emptyRatio": 1.00,
+          "minGivens": 0,
           "minStrategyLevel": "basic",
           "maxStrategyLevel": "master",
           "requiredStrategies": []

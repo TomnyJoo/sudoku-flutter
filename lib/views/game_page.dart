@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sudoku/index.dart';
 import 'package:sudoku/main.dart';
+import 'package:sudoku/renderers/layout_calculator.dart';
 
 /// 统一游戏屏幕页面
 ///
@@ -672,7 +673,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
   Widget _buildFunctionKeyboard(BuildContext context, GameViewModel<B> viewModel, double buttonSize) => FunctionKeyboard(
       onUndo: viewModel.undo,
       onRedo: viewModel.redo,
-      onHint: (context) => viewModel.hint(context),
+      onHint: () => viewModel.hint(),
       onMark: viewModel.toggleMarkMode,
       onErase: viewModel.clearCellValue,
       onReset: viewModel.resetGame,
@@ -684,6 +685,9 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
       buttonSize: buttonSize,
       isMarkMode: () => viewModel.currentGameState.isMarkMode,
       isAutoMarkMode: () => viewModel.currentGameState.isAutoMarkMode,
+      canUndo: () => viewModel.canUndo,
+      canRedo: () => viewModel.canRedo,
+      isShowingSolution: () => viewModel.currentGameState.isShowingSolution,
     );
 
   // ========== 游戏区域布局 ==========
@@ -802,77 +806,48 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
   Widget _createFinishScreen() {
     switch (_gameType) {
       case 'standard':
-        return FinishScreen<GameViewModel<StandardBoard>, GameService<StandardBoard>, StandardBoard>(
-          gameType: 'standard',
-          getViewModel: (ctx) => ctx.read<GameViewModel<StandardBoard>>(),
-          getGameService: (ctx) => GameService<StandardBoard>(
-            gameType: 'standard',
-            validator: GameValidator(),
-            boardFromJson: StandardBoard.fromJson,
-          ),
+        return _buildFinishScreen<StandardBoard>(
+          boardFromJson: StandardBoard.fromJson,
         );
       case 'diagonal':
-        return FinishScreen<GameViewModel<DiagonalBoard>, GameService<DiagonalBoard>, DiagonalBoard>(
-          gameType: 'diagonal',
-          getViewModel: (ctx) => ctx.read<GameViewModel<DiagonalBoard>>(),
-          getGameService: (ctx) => GameService<DiagonalBoard>(
-            gameType: 'diagonal',
-            validator: GameValidator(),
-            boardFromJson: DiagonalBoard.fromJson,
-          ),
+        return _buildFinishScreen<DiagonalBoard>(
+          boardFromJson: DiagonalBoard.fromJson,
         );
       case 'window':
-        return FinishScreen<GameViewModel<WindowBoard>, GameService<WindowBoard>, WindowBoard>(
-          gameType: 'window',
-          getViewModel: (ctx) => ctx.read<GameViewModel<WindowBoard>>(),
-          getGameService: (ctx) => GameService<WindowBoard>(
-            gameType: 'window',
-            validator: GameValidator(),
-            boardFromJson: WindowBoard.fromJson,
-          ),
+        return _buildFinishScreen<WindowBoard>(
+          boardFromJson: WindowBoard.fromJson,
         );
       case 'jigsaw':
-        return FinishScreen<GameViewModel<JigsawBoard>, GameService<JigsawBoard>, JigsawBoard>(
-          gameType: 'jigsaw',
-          getViewModel: (ctx) => ctx.read<GameViewModel<JigsawBoard>>(),
-          getGameService: (ctx) => GameService<JigsawBoard>(
-            gameType: 'jigsaw',
-            validator: GameValidator(),
-            boardFromJson: JigsawBoard.fromJson,
-          ),
+        return _buildFinishScreen<JigsawBoard>(
+          boardFromJson: JigsawBoard.fromJson,
         );
       case 'killer':
-        return FinishScreen<GameViewModel<KillerBoard>, GameService<KillerBoard>, KillerBoard>(
-          gameType: 'killer',
-          getViewModel: (ctx) => ctx.read<GameViewModel<KillerBoard>>(),
-          getGameService: (ctx) => GameService<KillerBoard>(
-            gameType: 'killer',
-            validator: GameValidator(),
-            boardFromJson: KillerBoard.fromJson,
-          ),
+        return _buildFinishScreen<KillerBoard>(
+          boardFromJson: KillerBoard.fromJson,
         );
       case 'samurai':
-        return FinishScreen<GameViewModel<SamuraiBoard>, GameService<SamuraiBoard>, SamuraiBoard>(
-          gameType: 'samurai',
-          getViewModel: (ctx) => ctx.read<GameViewModel<SamuraiBoard>>(),
-          getGameService: (ctx) => GameService<SamuraiBoard>(
-            gameType: 'samurai',
-            validator: GameValidator(),
-            boardFromJson: SamuraiBoard.fromJson,
-          ),
+        return _buildFinishScreen<SamuraiBoard>(
+          boardFromJson: SamuraiBoard.fromJson,
         );
       default:
-        return FinishScreen<GameViewModel<StandardBoard>, GameService<StandardBoard>, StandardBoard>(
-          gameType: _gameType,
-          getViewModel: (ctx) => ctx.read<GameViewModel<StandardBoard>>(),
-          getGameService: (ctx) => GameService<StandardBoard>(
-            gameType: _gameType,
-            validator: GameValidator(),
-            boardFromJson: StandardBoard.fromJson,
-          ),
+        return _buildFinishScreen<StandardBoard>(
+          boardFromJson: StandardBoard.fromJson,
         );
     }
   }
+
+  /// 通用 FinishScreen 工厂方法
+  Widget _buildFinishScreen<T extends Board>({
+    required T Function(Map<String, dynamic>) boardFromJson,
+  }) => FinishScreen<GameViewModel<T>, GameService<T>, T>(
+      gameType: _gameType,
+      getViewModel: (ctx) => ctx.read<GameViewModel<T>>(),
+      getGameService: (ctx) => GameService<T>(
+        gameType: _gameType,
+        validator: GameValidator(),
+        boardFromJson: boardFromJson,
+      ),
+    );
 
   // ========== 对话框 ==========
 

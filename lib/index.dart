@@ -1,4 +1,5 @@
 // Root barrel export - centralized architecture
+export 'constants/index.dart';
 export 'di/index.dart';
 export 'exceptions/index.dart';
 export 'l10n/index.dart';

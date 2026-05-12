@@ -1,4 +1,5 @@
 import 'package:sudoku/models/cell.dart';
+import 'package:sudoku/utils/app_logger.dart';
 
 /// 数独区域类型枚举
 enum RegionType {
@@ -38,7 +39,7 @@ extension RegionTypeExtension on RegionType {
         }
       }
     } catch (e) {
-      // 忽略异常
+      AppLogger.warning('Failed to get localized region type name', e);
     }
     return toString().split('.').last;
   }
@@ -174,34 +175,6 @@ class Region {
   String toDebugString() => 
     'Region(id: $id, type: $type, name: $name, cells: ${cells.length})';
 
-  /// 获取用于显示的字符串表示（考虑国际化）
-  String toDisplayString({final dynamic localizations}) {
-    final filledCells = getFilledCells().length;
-    final totalCells = cells.length;
-    final completionPercent = (filledCells / totalCells * 100).toStringAsFixed(1);
-    
-    // 使用本地化字符串或默认值
-    final regionTypeText = _getLocalizedRegionTypeText(localizations);
-    final completionText = _getLocalizedCompletionText(localizations);
-    
-    return '$regionTypeText区域($name) - $completionText: $completionPercent% ($filledCells/$totalCells)';
-  }
-
-  /// 获取本地化的区域类型文本
-  String _getLocalizedRegionTypeText(final dynamic localizations) => type.getLocalizedName(localizations);
-
-  /// 获取本地化的完成度文本
-  String _getLocalizedCompletionText(final dynamic localizations) {
-    try {
-      if (localizations is Map) {
-        return localizations['completion'] ?? '完成度';
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return '完成度';
-  }
-
   @override
   bool operator ==(final Object other) {
     if (identical(this, other)) return true;
@@ -270,20 +243,4 @@ class RegionCollectionUtils {
     final int boardSize,
   ) => 'RegionCollection(regions: ${regions.length}, boardSize: $boardSize)';
 
-  /// 获取用于显示的字符串表示（考虑国际化）
-  static String toDisplayString(
-    final List<Region> regions,
-    final int boardSize, {
-    final dynamic localizations,
-  }) {
-    final regionCounts = getRegionCountByType(regions);
-    final regionInfo = regionCounts.entries
-        .map((final e) => '${_getLocalizedRegionTypeText(localizations, e.key)}: ${e.value}')
-        .join(', ');
-    
-    return '$boardSize×$boardSize棋盘 - 区域: $regionInfo';
-  }
-
-  /// 获取本地化的区域类型文本
-  static String _getLocalizedRegionTypeText(final dynamic localizations, final RegionType type) => type.getLocalizedName(localizations);
 }

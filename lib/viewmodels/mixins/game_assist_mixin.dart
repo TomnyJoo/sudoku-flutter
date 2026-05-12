@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sudoku/index.dart';
 
 mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier {
@@ -10,6 +10,9 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
   bool get isPlaying;
   bool get useAdvancedStrategy;
   AppSettings? get settings;
+
+  /// 最后一次提示消息（由视图层监听并显示 SnackBar）
+  String? lastHintMessage;
 
   Timer? autoMarkDebounceTimer;
   bool isCalculatingCandidates = false;
@@ -97,7 +100,8 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
   }
 
   /// 提示 - 直接填入答案
-  Future<void> hint(BuildContext context) async {
+  /// 设置 lastHintMessage 供视图层监听并显示 SnackBar
+  Future<void> hint() async {
     final selectedCell = gameState.getSelectedCell();
 
     // 优先处理选中的单元格
@@ -110,7 +114,6 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
 
         // 填入答案
         await setCellValueForHint(selectedCell.row, selectedCell.col, solutionValue);
-        notifyListeners();
         return;
       }
     }
@@ -128,27 +131,14 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
 
             // 填入答案
             await setCellValueForHint(row, col, solutionValue);
-            notifyListeners();
             return;
           }
         }
       }
     }
 
-    // 显示无可用提示的反馈
-    final l10n = LocalizationUtils.app(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.noHintAvailable),
-        duration: const Duration(seconds: 2),
-        action: SnackBarAction(
-          label: l10n.close,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
+    // 设置无可用提示的消息，由视图层监听并显示
+    lastHintMessage = 'noHintAvailable';
   }
 
   // 由使用此mixin的类实现

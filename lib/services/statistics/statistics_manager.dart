@@ -1,8 +1,8 @@
-import 'package:sudoku/models/game_stats.dart';
 import 'package:sudoku/services/game_config.dart';
-import 'package:sudoku/services/statistics/game_statistics.dart';
-import 'package:sudoku/services/statistics/statistics_analysis_service.dart';
-import 'package:sudoku/services/statistics/statistics_storage_service.dart';
+import 'package:sudoku/services/session_statistics.dart';
+import 'package:sudoku/services/statistics/analysis_service.dart';
+import 'package:sudoku/services/statistics/statistics.dart';
+import 'package:sudoku/services/statistics/storage_service.dart';
 import 'package:sudoku/utils/app_logger.dart';
 
 /// 统计管理器，作为统计功能的统一入口
@@ -19,7 +19,7 @@ class StatisticsManager {
   }) async {
     try {
       final storageKey = StatisticsStorageService.getStorageKey(gameType);
-      final statistics = await StatisticsStorageService.loadStatistics(gameType, storageKey) ?? GameStatistics.empty(gameType);
+      final statistics = await StatisticsStorageService.loadStatistics(gameType, storageKey) ?? Statistics.empty(gameType);
       
       final record = GameRecord.create(
         gameType: gameType,
@@ -33,7 +33,7 @@ class StatisticsManager {
 
       final newTotalGames = statistics.totalGames + 1;
       final newCompletedGames = statistics.completedGames + (isCompleted ? 1 : 0);
-      final newCompletionRate = GameStatistics.calculateCompletionRate(
+      final newCompletionRate = Statistics.calculateCompletionRate(
         newTotalGames,
         newCompletedGames,
       );
@@ -55,7 +55,7 @@ class StatisticsManager {
       final difficultyStats = statistics.difficultyStats[difficulty] ?? DifficultyStats.empty(difficulty);
       final newDifficultyTotalGames = difficultyStats.totalGames + 1;
       final newDifficultyCompletedGames = difficultyStats.completedGames + (isCompleted ? 1 : 0);
-      final newDifficultyCompletionRate = GameStatistics.calculateCompletionRate(
+      final newDifficultyCompletionRate = Statistics.calculateCompletionRate(
         newDifficultyTotalGames,
         newDifficultyCompletedGames,
       );
@@ -102,7 +102,7 @@ class StatisticsManager {
       // 计算推荐难度
       final recommendedDifficulty = StatisticsAnalysisService.calculateRecommendedDifficulty(newRecentGames, difficulty);
 
-      final newStatistics = GameStatistics(
+      final newStatistics = Statistics(
         gameType: gameType,
         totalGames: newTotalGames,
         completedGames: newCompletedGames,
@@ -129,11 +129,11 @@ class StatisticsManager {
     }
   }
 
-  /// 从 GameStats 创建并添加游戏记录
+  /// 从 SessionStatistics 创建并添加游戏记录
   static Future<void> addGameRecordFromGameStats({
     required final String gameType,
     required final String difficulty,
-    required final GameStats gameStats,
+    required final SessionStatistics gameStats,
   }) async {
     await addGameRecord(
       gameType: gameType,
@@ -164,18 +164,18 @@ class StatisticsManager {
   }
 
   /// 获取游戏统计
-  static Future<GameStatistics> getGameStatistics(final String gameType) async {
+  static Future<Statistics> getGameStatistics(final String gameType) async {
     final storageKey = StatisticsStorageService.getStorageKey(gameType);
     final statistics = await StatisticsStorageService.loadStatistics(gameType, storageKey);
-    return statistics ?? GameStatistics.empty(gameType);
+    return statistics ?? Statistics.empty(gameType);
   }
 
   /// 获取所有游戏统计
-  static Future<Map<String, GameStatistics>> getAllGameStatistics() =>
+  static Future<Map<String, Statistics>> getAllGameStatistics() =>
       StatisticsStorageService.getAllStatistics();
 
   /// 获取合并的游戏统计
-  static Future<GameStatistics> getCombinedGameStatistics() async {
+  static Future<Statistics> getCombinedGameStatistics() async {
     final allStats = await StatisticsStorageService.getAllStatistics();
     final gameConfig = GameConfig();
     await gameConfig.initialize();
@@ -185,7 +185,7 @@ class StatisticsManager {
     final gameTypes = gameConfigs?.keys.toList() ?? [];
     
     // 收集所有游戏统计
-    final allGameStats = <GameStatistics>[];
+    final allGameStats = <Statistics>[];
     final combinedRecentGames = <GameRecord>[];
     int totalGames = 0;
     int totalCompletedGames = 0;
@@ -193,7 +193,7 @@ class StatisticsManager {
     double totalMistakes = 0.0;
     
     for (final gameType in gameTypes) {
-      final stats = allStats[gameType] ?? GameStatistics.empty(gameType);
+      final stats = allStats[gameType] ?? Statistics.empty(gameType);
       allGameStats.add(stats);
       combinedRecentGames.addAll(stats.recentGames);
       totalGames += stats.totalGames;
@@ -217,7 +217,7 @@ class StatisticsManager {
             difficulty: key,
             totalGames: existing.totalGames + value.totalGames,
             completedGames: existing.completedGames + value.completedGames,
-            completionRate: GameStatistics.calculateCompletionRate(
+            completionRate: Statistics.calculateCompletionRate(
               existing.totalGames + value.totalGames,
               existing.completedGames + value.completedGames,
             ),
@@ -246,11 +246,11 @@ class StatisticsManager {
     final averageTime = totalCompletedGames > 0 ? totalTime ~/ totalCompletedGames : 0;
     final averageMistakes = totalCompletedGames > 0 ? totalMistakes / totalCompletedGames : 0.0;
 
-    return GameStatistics(
+    return Statistics(
       gameType: 'combined',
       totalGames: totalGames,
       completedGames: totalCompletedGames,
-      completionRate: GameStatistics.calculateCompletionRate(totalGames, totalCompletedGames),
+      completionRate: Statistics.calculateCompletionRate(totalGames, totalCompletedGames),
       averageTime: averageTime,
       bestTime: StatisticsAnalysisService.calculateBestTime(allGameStats),
       averageMistakes: averageMistakes,
@@ -290,7 +290,7 @@ class StatisticsManager {
     // 收集所有游戏记录
     final allRecords = <GameRecord>[];
     for (final gameType in gameTypes) {
-      final stats = allStats[gameType] ?? GameStatistics.empty(gameType);
+      final stats = allStats[gameType] ?? Statistics.empty(gameType);
       allRecords.addAll(stats.recentGames);
     }
     
@@ -340,7 +340,7 @@ class StatisticsManager {
 
   /// 批量保存统计数据
   static Future<void> saveStatisticsBatch(
-    final Map<String, GameStatistics> statisticsMap,
+    final Map<String, Statistics> statisticsMap,
   ) async {
     await StatisticsStorageService.saveStatisticsBatch(statisticsMap);
   }

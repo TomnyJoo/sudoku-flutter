@@ -38,7 +38,7 @@ base class NakedSingleStrategy extends Strategy {
               if (cr == r && cc == c) continue;
               if (context.cellValue(cr, cc) != null) continue;
               if (context.hasCandidate(cr, cc, num)) {
-                context.removeCandidate(cr, cc, num); // 直接移除，不检查长度
+                context.removeCandidate(cr, cc, num);
                 changed = true;
               }
             }
@@ -117,7 +117,7 @@ base class HiddenSingleStrategy extends Strategy {
   }
 }
 
-/// 裸对策略
+/// 裸双策略
 base class NakedPairStrategy extends Strategy {
   const NakedPairStrategy();
 
@@ -168,7 +168,7 @@ base class NakedPairStrategy extends Strategy {
                   .getCandidates(cell.row, cell.col)
                   .toSet();
               final newCandidates = oldCandidates.difference(candidates1);
-              if (newCandidates.length != oldCandidates.length) {
+              if (newCandidates.length != oldCandidates.length && newCandidates.isNotEmpty) {
                 context.setCandidates(cell.row, cell.col, newCandidates);
                 changed = true;
               }
@@ -242,7 +242,7 @@ base class HiddenPairStrategy extends Strategy {
                   .getCandidates(cell.row, cell.col)
                   .toSet();
               final newCandidates = currentCandidates.difference(pair);
-              if (newCandidates.length != currentCandidates.length) {
+              if (newCandidates.length != currentCandidates.length && newCandidates.isNotEmpty) {
                 context.setCandidates(cell.row, cell.col, newCandidates);
                 changed = true;
               }
@@ -263,7 +263,7 @@ base class NakedTripleStrategy extends Strategy {
   StrategyType get type => StrategyType.nakedTriple;
 
   @override
-  StrategyLevel get level => StrategyLevel.advanced;
+  StrategyLevel get level => StrategyLevel.intermediate;
 
   @override
   Set<GameType> get applicableGames => GameType.values.toSet();
@@ -316,7 +316,7 @@ base class NakedTripleStrategy extends Strategy {
                     .getCandidates(cell.row, cell.col)
                     .toSet();
                 final newCandidates = oldCandidates.difference(union);
-                if (newCandidates.length != oldCandidates.length) {
+                if (newCandidates.length != oldCandidates.length && newCandidates.isNotEmpty) {
                   context.setCandidates(cell.row, cell.col, newCandidates);
                   changed = true;
                 }
@@ -392,7 +392,7 @@ base class HiddenTripleStrategy extends Strategy {
                     .getCandidates(cell.row, cell.col)
                     .toSet();
                 final newCandidates = oldCandidates.intersection(triple);
-                if (newCandidates != oldCandidates) {
+                if (newCandidates.isNotEmpty && newCandidates != oldCandidates) {
                   context.setCandidates(cell.row, cell.col, newCandidates);
                   changed = true;
                 }
@@ -567,12 +567,10 @@ base class XWingStrategy extends Strategy {
             final c2 = rowPositions[r1]![1];
             for (int r = 0; r < n; r++) {
               if (r == r1 || r == r2) continue;
-              if (context.hasCandidate(r, c1, num)) {
-                context.removeCandidate(r, c1, num);
+              if (_safeRemoveCandidate(context, r, c1, num)) {
                 changed = true;
               }
-              if (context.hasCandidate(r, c2, num)) {
-                context.removeCandidate(r, c2, num);
+              if (_safeRemoveCandidate(context, r, c2, num)) {
                 changed = true;
               }
             }
@@ -604,12 +602,10 @@ base class XWingStrategy extends Strategy {
             final r2 = colPositions[c1]![1];
             for (int c = 0; c < n; c++) {
               if (c == c1 || c == c2) continue;
-              if (context.hasCandidate(r1, c, num)) {
-                context.removeCandidate(r1, c, num);
+              if (_safeRemoveCandidate(context, r1, c, num)) {
                 changed = true;
               }
-              if (context.hasCandidate(r2, c, num)) {
-                context.removeCandidate(r2, c, num);
+              if (_safeRemoveCandidate(context, r2, c, num)) {
                 changed = true;
               }
             }
@@ -694,11 +690,7 @@ base class SwordfishStrategy extends Strategy {
                 for (int r = 0; r < n; r++) {
                   if (r == r1 || r == r2 || r == r3) continue;
                   for (final c in cols) {
-                    // 检查移除后是否会导致候选数为空
-                    final currentCandidates = context.getCandidates(r, c).toSet();
-                    if (currentCandidates.length > 1 &&
-                        context.hasCandidate(r, c, num)) {
-                      context.removeCandidate(r, c, num);
+                    if (_safeRemoveCandidate(context, r, c, num)) {
                       changed = true;
                     }
                   }
@@ -711,4 +703,67 @@ base class SwordfishStrategy extends Strategy {
     }
     return changed;
   }
+}
+
+/// 检查在指定单元格设置单候选数后，是否会在同一区域内创建重复的单候选数
+/// 返回 true 表示会创建重复（不应移除），返回 false 表示可以安全移除
+bool _wouldCreateDuplicateSingle(BoardContext context, int r, int c, int num) {
+  // 检查该单元格所属的所有区域
+  for (final regIdx in context.cellToRegions[r][c]) {
+    final region = context.getRegion(regIdx);
+    int singleCount = 0;
+    
+    for (final cell in region.cells) {
+      // 跳过当前单元格
+      if (cell.row == r && cell.col == c) continue;
+      
+      // 如果该单元格已有值且等于num，则说明已经存在冲突
+      if (context.cellValue(cell.row, cell.col) == num) {
+        return true;
+      }
+      
+      // 检查是否已有单候选数等于num
+      final candidates = context.getCandidates(cell.row, cell.col).toSet();
+      if (candidates.length == 1 && candidates.contains(num)) {
+        singleCount++;
+        if (singleCount >= 1) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/// 安全地移除候选数，如果移除后会导致候选数为空或产生冲突，则不移除
+bool _safeRemoveCandidate(BoardContext context, int r, int c, int num) {
+  final currentCandidates = context.getCandidates(r, c).toSet();
+  
+  // 如果当前候选数已经只有一个，不移除（避免空白候选）
+  if (currentCandidates.length <= 1) {
+    return false;
+  }
+  
+  // 如果没有该候选数，不需要移除
+  if (!currentCandidates.contains(num)) {
+    return false;
+  }
+  
+  final newCandidates = currentCandidates.toSet()..remove(num);
+  
+  // 如果移除后候选数为空，不移除
+  if (newCandidates.isEmpty) {
+    return false;
+  }
+  
+  // 如果移除后变成单候选数，检查是否会产生冲突
+  if (newCandidates.length == 1) {
+    if (_wouldCreateDuplicateSingle(context, r, c, newCandidates.first)) {
+      return false;
+    }
+  }
+  
+  // 安全移除
+  context.removeCandidate(r, c, num);
+  return true;
 }

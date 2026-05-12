@@ -14,9 +14,6 @@ mixin GameInputMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
   /// 选择单元格
   void selectCell(final int row, final int col) => handleCellTap(row, col);
 
-  /// 单元格被点击
-  void cellTapped(final int row, final int col) => handleCellTap(row, col);
-
   /// 处理单元格选择
   void handleCellSelection(final int row, final int col) {
     if (!isPlaying) return;
@@ -66,8 +63,9 @@ mixin GameInputMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
     if (cell.value != null) {
       await setCellValueInternal(row, col, null);
     } else if (cell.candidates.isNotEmpty) {
-      final newBoard = gameState.board.setCellCandidates(row, col, <int>{});
-      gameState = gameService.updateBoard(gameState, newBoard as B);
+      // 使用命令模式清除候选数
+      final command = ClearCandidatesCommand(row: row, col: col);
+      gameState = gameService.updateBoardWithCommand(gameState, command);
     }
     // 不调用 notifyListeners()，由调用者负责
   }

@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
-import 'package:sudoku/models/killer_cage.dart';
+import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/utils/app_logger.dart';
-import 'package:sudoku/utils/constants/app_constants.dart';
 
 /// Summary: 模板数据类
 class GameTemplate {
@@ -12,13 +11,11 @@ class GameTemplate {
     required this.solutionData, /// 答案数据
     DateTime? createdAt, /// 创建时间
     this.regionMatrix, /// 区域数据（锯齿游戏使用）
-    this.cagesData, /// 笼子数据（杀手游戏使用）
   }) : createdAt = createdAt ?? DateTime.now();
   final List<List<int?>>? puzzleData;
   final List<List<int>> solutionData;
   final DateTime createdAt;
   final List<List<int>>? regionMatrix;
-  final List<Map<String, dynamic>>? cagesData;
 }
 
 /// Summary: 模板管理器，负责模板的预加载和管理，使用静态变量缓存
@@ -31,7 +28,6 @@ class TemplateManager {
   // 静态缓存
   static List<String>? _rrn17Solutions; /// rrn17 答案模板  
   static List<List<List<int>>>? _jigsawRegions; /// 锯齿数独区域模板
-  static Map<String, dynamic>? _killerCageShapes; /// 杀手数独笼子模板
   /// 是否初始化
   static bool _initialized = false;
 
@@ -39,7 +35,6 @@ class TemplateManager {
   TemplateLoadStatus get loadStatus => TemplateLoadStatus(
     rrn17Loaded: _rrn17Solutions != null && _rrn17Solutions!.isNotEmpty,
     jigsawLoaded: _jigsawRegions != null && _jigsawRegions!.isNotEmpty,
-    killerLoaded: _killerCageShapes != null,
   );
 
   /// 初始化模板管理器（预加载所有模板），应该在应用启动时调用
@@ -50,7 +45,6 @@ class TemplateManager {
     await Future.wait([
       _loadRrn17SolutionsInternal(),
       _loadJigsawRegionsInternal(),
-      _loadKillerCageShapesInternal(),
     ]);
 
     _initialized = true;
@@ -89,15 +83,6 @@ class TemplateManager {
   Future<List<List<int>>?> loadJigsawRegions() async {
     if (_jigsawRegions == null || _jigsawRegions!.isEmpty) return null;
     return _jigsawRegions![_random.nextInt(_jigsawRegions!.length)];
-  }
-
-  /// 加载杀手数独笼子模板，返回随机选择的笼子集
-  Future<List<KillerCage>?> loadKillerCageShapes() async {
-    final templates = _killerCageShapes?['templates'] as List?;
-    if (templates == null || templates.isEmpty) return null;
-
-    final selectedTemplate = templates[_random.nextInt(templates.length)] as Map<String, dynamic>;
-    return _loadCagesFromTemplate(selectedTemplate);
   }
 
   /// 内部加载 rrn17 答案模板
@@ -178,71 +163,6 @@ class TemplateManager {
     }
   }
 
-  /// 内部加载杀手数独笼子模板
-  Future<void> _loadKillerCageShapesInternal() async {
-    if (_killerCageShapes == null) {
-      const int maxRetries = AppConstants.templateLoadMaxRetries;
-      int attempts = 0;
-      
-      while (attempts < maxRetries) {
-        try {
-          final content = await rootBundle.loadString(
-            'assets/templates/cage_shapes.json',
-          );
-          _killerCageShapes = json.decode(content) as Map<String, dynamic>;
-          return;
-        } catch (e) {
-          AppLogger.warning('加载杀手数独笼子模板失败 (尝试 ${attempts + 1}): $e');
-          attempts++;
-          if (attempts < maxRetries) {
-            await Future.delayed(AppConstants.templateLoadRetryDelay);
-          }
-        }
-      }
-    }
-  }
-
-  /// 从模板数据加载笼子
-  List<KillerCage>? _loadCagesFromTemplate(Map<String, dynamic> template) {
-    final shapesData = template['shapes'] as List?;
-    final cagesData = template['cages'] as List?;
-    final cagesList = shapesData ?? cagesData;
-
-    if (cagesList == null) return null;
-
-    final cages = <KillerCage>[];
-    for (final cageData in cagesList) {
-      if (cageData is Map<String, dynamic>) {
-        final cellsData = cageData['cells'] as List?;
-        if (cellsData == null) continue;
-
-        final coordinates = <(int, int)>[];
-        for (final cell in cellsData) {
-          if (cell is List && cell.length == 2) {
-            coordinates.add((cell[0] as int, cell[1] as int));
-          } else if (cell is Map<String, dynamic>) {
-            final row = cell['row'] as int?;
-            final col = cell['col'] as int?;
-            if (row != null && col != null) {
-              coordinates.add((row, col));
-            }
-          }
-        }
-
-        if (coordinates.isNotEmpty) {
-          final cage = KillerCage(
-            id: 'cage_${DateTime.now().millisecondsSinceEpoch}_${cages.length}',
-            cellCoordinates: coordinates,
-            sum: 0,
-          );
-          cages.add(cage);
-        }
-      }
-    }
-
-    return cages.isNotEmpty ? cages : null;
-  }
-
   /// 生成1-9的随机替换映射表
   Map<int, int> _generateNumberSubstitutionMap() {
     final numbers = List.generate(9, (i) => i + 1)..shuffle(_random);
@@ -263,7 +183,6 @@ class TemplateManager {
   void clearCache() {
     _rrn17Solutions = null;
     _jigsawRegions = null;
-    _killerCageShapes = null;
     _initialized = false;
   }
 }
@@ -274,11 +193,9 @@ class TemplateLoadStatus {
   const TemplateLoadStatus({
     required this.rrn17Loaded,
     required this.jigsawLoaded,
-    required this.killerLoaded,
   });
   final bool rrn17Loaded;
   final bool jigsawLoaded;
-  final bool killerLoaded;
   
-  bool get allLoaded => rrn17Loaded && jigsawLoaded && killerLoaded;
+  bool get allLoaded => rrn17Loaded && jigsawLoaded;
 }

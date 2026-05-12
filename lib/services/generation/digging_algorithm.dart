@@ -1,10 +1,10 @@
 import 'dart:math';
+import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/exceptions/exceptions.dart';
 import 'package:sudoku/models/index.dart';
 import 'package:sudoku/services/solving/candidate_calculator.dart';
 import 'package:sudoku/services/solving/solvers/dlx_solver.dart';
 import 'package:sudoku/services/solving/strategy_engine.dart';
-import 'package:sudoku/utils/constants/app_constants.dart';
 
 /// 谜题分析结果类
 class PuzzleAnalysisResult {

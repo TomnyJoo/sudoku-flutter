@@ -70,10 +70,10 @@ class KillerCage {
   /// - board: 当前棋盘状态
   ///
   /// 返回：笼子内所有已填单元格的和
-  int getCurrentSum(KillerBoard board) {
-    // 使用棋盘状态哈希判断是否需要重新计算
-    final currentHash = board.stateHash;
-    if (_cachedSum != null && _cachedBoardStateHash == currentHash) {
+  int getCurrentSum(Board board) {
+    // 使用棋盘状态哈希判断是否需要重新计算（仅KillerBoard支持stateHash）
+    final currentHash = board is KillerBoard ? board.stateHash : null;
+    if (currentHash != null && _cachedSum != null && _cachedBoardStateHash == currentHash) {
       return _cachedSum!;
     }
 
@@ -81,13 +81,15 @@ class KillerCage {
       final cell = board.getCell(coord.$1, coord.$2);
       return total + (cell.value ?? 0);
     });
-    _cachedBoardStateHash = currentHash;
+    if (currentHash != null) {
+      _cachedBoardStateHash = currentHash;
+    }
 
     return _cachedSum!;
   }
 
   /// 检查笼子是否已完成（所有单元格已填）
-  bool isComplete(KillerBoard board) {
+  bool isComplete(Board board) {
     for (final coord in cellCoordinates) {
       final cell = board.getCell(coord.$1, coord.$2);
       if (cell.value == null) return false;
@@ -101,7 +103,7 @@ class KillerCage {
   /// 1. 已填数字之和不能超过目标和
   /// 2. 完成后和必须等于目标和
   /// 3. 笼子内数字绝对不能重复（杀手数独硬性规则）
-  bool isValid(KillerBoard board) {
+  bool isValid(Board board) {
     final currentSum = getCurrentSum(board);
 
     // 如果当前和已经超过目标和，无效
@@ -123,7 +125,7 @@ class KillerCage {
   /// 检查笼子内是否有重复数字
   ///
   /// 杀手数独硬性规则：笼子内数字绝对不能重复
-  bool _hasDuplicateValues(KillerBoard board) {
+  bool _hasDuplicateValues(Board board) {
     final values = <int>{};
 
     for (final coord in cellCoordinates) {
@@ -145,15 +147,15 @@ class KillerCage {
   /// 检查笼子内数字是否有重复（公开方法）
   ///
   /// 用于验证和调试
-  bool hasDuplicateValues(KillerBoard board) => _hasDuplicateValues(board);
+  bool hasDuplicateValues(Board board) => _hasDuplicateValues(board);
 
   /// 获取笼子在棋盘上的单元格
-  List<Cell> getCells(KillerBoard board) => cellCoordinates
+  List<Cell> getCells(Board board) => cellCoordinates
         .map((coord) => board.getCell(coord.$1, coord.$2))
         .toList();
 
   /// 获取笼子的第一个单元格（用于显示和值）
-  Cell getFirstCell(KillerBoard board) {
+  Cell getFirstCell(Board board) {
     final firstCoord = cellCoordinates.first;
     return board.getCell(firstCoord.$1, firstCoord.$2);
   }

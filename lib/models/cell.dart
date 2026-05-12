@@ -122,8 +122,8 @@ class Cell {  /// 单元格颜色索引（用于标记不同区域或状态）
 
   /// 添加候选数字
   Cell addCandidate(final int number) {
-    if (number < 1 || number > 9) {
-      final errorMsg = '候选数字必须在1-9范围内: $number';
+    if (number < 1) {
+      final errorMsg = '候选数字必须为正数: $number';
       throw ArgumentError(errorMsg);
     }
     final newCandidates = Set<int>.from(candidates)..add(number);
@@ -138,8 +138,8 @@ class Cell {  /// 单元格颜色索引（用于标记不同区域或状态）
 
   /// 切换候选数字
   Cell toggleCandidate(final int number) {
-    if (number < 1 || number > 9) {
-      final errorMsg = '候选数字必须在1-9范围内: $number';
+    if (number < 1) {
+      final errorMsg = '候选数字必须为正数: $number';
       throw ArgumentError(errorMsg);
     }
     final newCandidates = Set<int>.from(candidates);
@@ -156,8 +156,8 @@ class Cell {  /// 单元格颜色索引（用于标记不同区域或状态）
 
   /// 设置单元格值，并清除候选数字
   Cell setValue(final int? newValue) {
-    if (newValue != null && (newValue < 1 || newValue > 9)) {
-      final errorMsg = '数字值必须在1-9范围内: $newValue';
+    if (newValue != null && newValue < 1) {
+      final errorMsg = '数字值必须为正数: $newValue';
       throw ArgumentError(errorMsg);
     }
     return createInstance(
@@ -217,83 +217,6 @@ class Cell {  /// 单元格颜色索引（用于标记不同区域或状态）
   String toDebugString() =>
      'Cell(row: $row, col: $col, value: $value, isFixed: $isFixed, '
         'isError: $isError, isSelected: $isSelected, isHighlighted: $isHighlighted, colorIndex: $colorIndex)';
-
-  /// 获取用于显示的字符串表示（考虑国际化）
-  String toDisplayString({final dynamic localizations}) {
-    // 使用本地化字符串或默认值
-    final emptyCellText = localizations != null ? _getLocalizedEmptyCellText(localizations) : '空';
-    final fixedText = localizations != null ? _getLocalizedFixedText(localizations, isFixed) : (isFixed ? '固定' : '可编辑');
-    final errorText = localizations != null ? _getLocalizedErrorText(localizations, isError) : (isError ? '错误' : '正确');
-    final selectedText = localizations != null ? _getLocalizedSelectedText(localizations, isSelected) : (isSelected ? '选中' : '未选中');
-    final highlightedText = localizations != null ? _getLocalizedHighlightedText(localizations, isHighlighted) : (isHighlighted ? '高亮' : '正常');
-    
-    final valueStr = value?.toString() ?? emptyCellText;
-    
-    return '单元格(${row + 1},${col + 1}): 值=$valueStr, $fixedText, $errorText, $selectedText, $highlightedText';
-  }
-
-  /// 获取本地化的空单元格文本
-  String _getLocalizedEmptyCellText(final dynamic localizations) {
-    // 尝试调用本地化方法，如果不存在则返回默认值
-    try {
-      if (localizations is Map && localizations.containsKey('emptyCell')) {
-        return localizations['emptyCell'];
-      }
-      // 如果localizations是AppLocalizations实例，可以调用相应方法
-      // 这里使用反射或动态调用，暂时返回默认值
-    } catch (e) {
-      // 忽略异常，返回默认值
-    }
-    return '空';
-  }
-
-  /// 获取本地化的固定状态文本
-  String _getLocalizedFixedText(final dynamic localizations, final bool isFixed) {
-    try {
-      if (localizations is Map) {
-        return isFixed ? (localizations['fixedCell'] ?? '固定') : (localizations['editableCell'] ?? '可编辑');
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return isFixed ? '固定' : '可编辑';
-  }
-
-  /// 获取本地化的错误状态文本
-  String _getLocalizedErrorText(final dynamic localizations, final bool isError) {
-    try {
-      if (localizations is Map) {
-        return isError ? (localizations['errorCell'] ?? '错误') : (localizations['correctCell'] ?? '正确');
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return isError ? '错误' : '正确';
-  }
-
-  /// 获取本地化的选中状态文本
-  String _getLocalizedSelectedText(final dynamic localizations, final bool isSelected) {
-    try {
-      if (localizations is Map) {
-        return isSelected ? (localizations['selectedCell'] ?? '选中') : (localizations['unselectedCell'] ?? '未选中');
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return isSelected ? '选中' : '未选中';
-  }
-
-  /// 获取本地化的高亮状态文本
-  String _getLocalizedHighlightedText(final dynamic localizations, final bool isHighlighted) {
-    try {
-      if (localizations is Map) {
-        return isHighlighted ? (localizations['highlightedCell'] ?? '高亮') : (localizations['normalCell'] ?? '正常');
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return isHighlighted ? '高亮' : '正常';
-  }
 
   @override
   String toString() => toDebugString();

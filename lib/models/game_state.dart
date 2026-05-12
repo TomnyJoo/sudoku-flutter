@@ -1,9 +1,9 @@
 import 'package:sudoku/models/board.dart';
+import 'package:sudoku/models/board_commands.dart';
 import 'package:sudoku/models/cell.dart';
-import 'package:sudoku/models/difficulty.dart';
-import 'package:sudoku/models/game_stats.dart';
+import 'package:sudoku/services/generation/progress_utils.dart';
 import 'package:sudoku/services/history_manager.dart';
-import 'package:sudoku/utils/game_utils.dart';
+import 'package:sudoku/services/session_statistics.dart';
 
 /// Summary：游戏状态泛型类，表示整个游戏的当前状态，包括棋盘、答案、计时、历史记录等信息
 /// B: 棋盘类型，必须继承自Board
@@ -24,6 +24,7 @@ class GameState<B extends Board> {
     this.isMarkMode = false,
     this.isAutoMarkMode = false,
     this.hintsUsed = 0,
+    this.savedBoard,
   }) {
     // 验证参数
     if (elapsedTime < 0) {
@@ -48,30 +49,50 @@ class GameState<B extends Board> {
     B Function(Map<String, dynamic>) boardFromJson,
   ) {
     final common = parseCommonJsonFields(json);
-    final historyJson = json['history'] as List? ?? [];
-    
-    // 构建历史记录
-    final historyStates = historyJson
-        .map((b) => boardFromJson(b as Map<String, dynamic>))
-        .toList();
-    final history = HistoryManager(
-      states: historyStates,
-      currentIndex: common['historyIndex'],
-    );
-    
+    final initialBoard = boardFromJson(json['initialBoard'] as Map<String, dynamic>);
+
+    // 构建历史记录（向后兼容：支持旧快照格式和新命令格式）
+    HistoryManager history;
+    final historyData = json['history'];
+    if (historyData is Map && historyData['mode'] == 'command') {
+      // 新格式：命令列表
+      final commandsJson = historyData['commands'] as List? ?? [];
+      final commands = commandsJson
+          .map((c) => BoardCommand.fromJson(c as Map<String, dynamic>))
+          .toList();
+      history = HistoryManager(
+        initialBoard: initialBoard,
+        commands: commands,
+        currentIndex: common['historyIndex'],
+      );
+    } else {
+      // 旧格式：快照列表（向后兼容）
+      final historyJson = historyData as List? ?? [];
+      final historyStates = historyJson
+          .map((b) => boardFromJson(b as Map<String, dynamic>))
+          .toList();
+      history = HistoryManager.fromSnapshotList(
+        historyStates,
+        currentIndex: common['historyIndex'],
+      );
+    }
+
     // 构建统计服务
     final board = boardFromJson(json['board'] as Map<String, dynamic>);
-    final stats = GameStats(
+    final totalMoves = historyData is Map
+        ? (historyData['commands'] as List?)?.length ?? 0
+        : (historyData as List?)?.length ?? 1;
+    final stats = SessionStatistics(
       board: board,
       mistakes: common['mistakes'],
-      totalMoves: historyStates.length - 1,
+      totalMoves: totalMoves - 1,
       isCompleted: common['isCompleted'],
       elapsedTime: common['elapsedTime'],
     );
-    
+
     return GameState<B>(
       board: board,
-      initialBoard: boardFromJson(json['initialBoard'] as Map<String, dynamic>),
+      initialBoard: initialBoard,
       solution: boardFromJson(json['solution'] as Map<String, dynamic>),
       difficulty: common['difficulty'],
       elapsedTime: common['elapsedTime'],
@@ -96,13 +117,16 @@ class GameState<B extends Board> {
   final int mistakes;   /// 错误计数（违反数独规则的次数）
   final bool isCompleted; /// 是否完成游戏标志
   final HistoryManager history; /// 历史记录管理器
-  final GameStats stats; /// 游戏统计服务
+  final SessionStatistics stats; /// 游戏统计服务
   final DateTime? startTime;  /// 游戏开始时间
   final DateTime? completionTime; /// 游戏完成时间
   final bool isShowingSolution; /// 是否正在显示答案
   final bool isMarkMode; /// 是否处于标记模式
   final bool isAutoMarkMode; /// 是否处于自动标记模式
   final int hintsUsed; /// 使用提示的次数
+
+  /// 显示答案前保存的棋盘（用于隐藏答案时恢复）
+  final B? savedBoard;
 
   /// 复制游戏状态，允许覆盖指定属性
   GameState<B> copyWith({
@@ -114,13 +138,14 @@ class GameState<B extends Board> {
     int? mistakes,
     bool? isCompleted,
     HistoryManager? history,
-    GameStats? stats,
+    SessionStatistics? stats,
     DateTime? startTime,
     DateTime? completionTime,
     bool? isShowingSolution,
     bool? isMarkMode,
     bool? isAutoMarkMode,
     int? hintsUsed,
+    B? savedBoard,
   }) => GameState<B>(
     board: board ?? this.board,
     initialBoard: initialBoard ?? this.initialBoard,
@@ -137,6 +162,7 @@ class GameState<B extends Board> {
     isMarkMode: isMarkMode ?? this.isMarkMode,
     isAutoMarkMode: isAutoMarkMode ?? this.isAutoMarkMode,
     hintsUsed: hintsUsed ?? this.hintsUsed,
+    savedBoard: savedBoard ?? this.savedBoard,
   );
 
   /// 创建游戏状态实例
@@ -149,13 +175,14 @@ class GameState<B extends Board> {
     int mistakes = 0,
     bool isCompleted = false,
     required HistoryManager history,
-    required GameStats stats,
+    required SessionStatistics stats,
     DateTime? startTime,
     DateTime? completionTime,
     bool isShowingSolution = false,
     bool isMarkMode = false,
     bool isAutoMarkMode = false,
     int hintsUsed = 0,
+    B? savedBoard,
   }) => GameState<B>(
     board: board,
     initialBoard: initialBoard,
@@ -172,6 +199,7 @@ class GameState<B extends Board> {
     isMarkMode: isMarkMode,
     isAutoMarkMode: isAutoMarkMode,
     hintsUsed: hintsUsed,
+    savedBoard: savedBoard,
   );
 
   /// 获取游戏准确率
@@ -180,9 +208,6 @@ class GameState<B extends Board> {
   double get completionPercentage => stats.completionPercentage;
 
   /// 获取选中的单元格
-  /// 注意：由于 GameState 是不可变的，每次 copyWith 都创建新实例，
-  /// 缓存无法跨实例保留，因此保持 O(n²) 遍历。
-  /// 对于标准 9×9 棋盘（81 个单元格），性能影响可忽略不计。
   Cell? getSelectedCell() {
     for (final row in board.cells) {
       for (final cell in row) {
@@ -192,7 +217,7 @@ class GameState<B extends Board> {
     return null;
   }
 
-  /// 转换为JSON格式，用于持久化存储，返回包含游戏状态数据的Map
+  /// 转换为JSON格式（命令模式序列化）
   Map<String, dynamic> toJson() => {
     'board': board.toJson(),
     'initialBoard': initialBoard.toJson(),
@@ -201,7 +226,11 @@ class GameState<B extends Board> {
     'elapsedTime': elapsedTime,
     'mistakes': mistakes,
     'isCompleted': isCompleted,
-    'history': history.states.map((final b) => b.toJson()).toList(),
+    'history': {
+      'mode': 'command',
+      'commands': history.commands.map((cmd) => cmd.toJson()).toList(),
+      'currentIndex': history.currentIndex,
+    },
     'historyIndex': history.currentIndex,
     'startTime': startTime?.toIso8601String(),
     'completionTime': completionTime?.toIso8601String(),
@@ -214,12 +243,18 @@ class GameState<B extends Board> {
   /// 解析通用 JSON 字段的辅助方法
   static Map<String, dynamic> parseCommonJsonFields(Map<String, dynamic> json) {
     final historyIndex = json['historyIndex'] as int? ?? 0;
-    final historyJson = json['history'] as List? ?? [];
 
-    // 确保 historyIndex 不超过历史记录长度
-    // 注意：负数在正常情况下不应该出现，如果出现说明数据已损坏
-    final safeHistoryIndex = historyIndex >= historyJson.length
-        ? (historyJson.isEmpty ? 0 : historyJson.length - 1)
+    // 兼容旧格式（history 是 List）和新格式（history 是 Map）
+    int historyLength = 0;
+    final historyData = json['history'];
+    if (historyData is List) {
+      historyLength = historyData.length;
+    } else if (historyData is Map) {
+      historyLength = (historyData['commands'] as List?)?.length ?? 0;
+    }
+
+    final safeHistoryIndex = historyIndex >= historyLength
+        ? (historyLength <= 1 ? 0 : historyLength - 1)
         : historyIndex;
 
     return {
@@ -244,80 +279,9 @@ class GameState<B extends Board> {
   /// 获取用于调试的字符串表示（不依赖国际化）
   String toDebugString() {
     final timeStr = GameUtils.formatTime(elapsedTime);
-    return 'GameState(difficulty: $difficulty, time: $timeStr, ' 
-        'mistakes: $mistakes, completed: $isCompleted, history: ${history.length}, showingSolution: $isShowingSolution, ' 
+    return 'GameState(difficulty: $difficulty, time: $timeStr, '
+        'mistakes: $mistakes, completed: $isCompleted, history: ${history.length}, showingSolution: $isShowingSolution, '
         'isMarkMode: $isMarkMode, isAutoMarkMode: $isAutoMarkMode)';
-  }
-
-  /// 获取用于显示的字符串表示（考虑国际化）
-  String toDisplayString({final dynamic localizations}) {
-    final timeStr = GameUtils.formatTime(elapsedTime);
-
-    // 使用本地化字符串或默认值
-    final gameStatusText = _getLocalizedString(
-      localizations,
-      'gameStatus',
-      '游戏状态',
-    );
-    final difficultyText =
-        '${_getLocalizedString(localizations, 'difficulty', '难度')}: ${_getLocalizedDifficulty(localizations: localizations)}';
-    final timeLabel = _getLocalizedString(localizations, 'time', '用时');
-    final mistakesLabel = _getLocalizedString(localizations, 'mistakes', '错误');
-    final accuracyLabel = _getLocalizedString(localizations, 'accuracy', '准确率');
-    final completionLabel = _getLocalizedString(
-      localizations,
-      'completion',
-      '完成度',
-    );
-    final statusLabel = _getLocalizedString(localizations, 'status', '状态');
-
-    final accuracyPercent = (accuracy * 100).toStringAsFixed(1);
-    final completionPercent = (completionPercentage * 100).toStringAsFixed(1);
-    final statusValue = _getLocalizedStatus(localizations);
-
-    return '$gameStatusText: $difficultyText, $timeLabel: $timeStr, $mistakesLabel: $mistakes, ' 
-        '$accuracyLabel: $accuracyPercent%, $completionLabel: $completionPercent%, $statusLabel: $statusValue';
-  }
-
-  /// 获取本地化字符串
-  String _getLocalizedString(
-    dynamic localizations,
-    String key,
-    String defaultValue,
-  ) {
-    try {
-      if (localizations is Map) {
-        return localizations[key] ?? defaultValue;
-      }
-    } catch (e) {
-      // 忽略异常
-    }
-    return defaultValue;
-  }
-
-  /// 获取本地化难度名称
-  String _getLocalizedDifficulty({dynamic localizations}) {
-    try {
-      final difficultyEnum = Difficulty.values.firstWhere(
-        (d) => d.name == difficulty,
-        orElse: () => Difficulty.medium,
-      );
-      final config = DifficultyConfig.getConfig(difficultyEnum);
-      return config.getLocalizedDifficultyName(localizations);
-    } catch (e) {
-      return difficulty;
-    }
-  }
-
-  /// 简化的状态本地化
-  String _getLocalizedStatus(dynamic localizations) {
-    if (isShowingSolution) {
-      return _getLocalizedString(localizations, 'showingSolution', '显示答案中');
-    } else if (isCompleted) {
-      return _getLocalizedString(localizations, 'completed', '已完成');
-    } else {
-      return _getLocalizedString(localizations, 'inProgress', '进行中');
-    }
   }
 
   @override

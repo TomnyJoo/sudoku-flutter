@@ -239,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context: context,
                           type: type,
                           name: GameFactory.getLocalizedGameName(type, gameLocalizations),
+                          gameLocalizations: gameLocalizations,
                           isDarkMode: isDarkMode,
                         ),
                       );
@@ -318,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required BuildContext context,
     required GameType type,
     required String name,
+    required dynamic gameLocalizations,
     required bool isDarkMode,
   }) {
     final style = _gameTypeStyles[type] ?? _gameTypeStyles[GameType.standard]!;
@@ -326,12 +328,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final icon = style.$3;
 
     final subtitles = {
-      GameType.standard: '标准 9×9',
-      GameType.diagonal: '对角线约束',
-      GameType.window: '窗口区域',
-      GameType.jigsaw: '异形宫格',
-      GameType.killer: '求和区域',
-      GameType.samurai: '五盘联动',
+      GameType.standard: gameLocalizations.gameTypeStandardDescription,
+      GameType.diagonal: gameLocalizations.gameTypeDiagonalDescription,
+      GameType.window: gameLocalizations.gameTypeWindowDescription,
+      GameType.jigsaw: gameLocalizations.gameTypeJigsawDescription,
+      GameType.killer: gameLocalizations.gameTypeKillerDescription,
+      GameType.samurai: gameLocalizations.gameTypeSamuraiDescription,
     };
 
     return GestureDetector(
@@ -535,12 +537,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return GestureDetector(
       onTap: () => _startGame(context, difficulty),
-      child: _GlassCard(
-        isDarkMode: isDarkMode,
-        borderRadius: 16,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: 48,
+          maxHeight: 80,
+        ),
+        child: _GlassCard(
+          isDarkMode: isDarkMode,
+          borderRadius: 16,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
             children: [
               // 数字容器：固定宽度，高度随 Row 自适应
               SizedBox(
@@ -596,6 +603,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -717,8 +725,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openCustomGame(BuildContext context, GameType gameType) {
-    final customRoute = GameFactory.getCustomGameRoute(gameType);
-    if (customRoute != null) Navigator.pushNamed(context, customRoute);
+    Navigator.pushNamed(context, GameFactory.getCustomGameRoute(gameType));
   }
 
   Future<void> _continueSavedGame(BuildContext context, GameType gameType) async {
@@ -736,14 +743,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadSavedGame(SavedGameInfo gameInfo) async {
-    final gameType = GameType.values.firstWhere(
-      (type) => type.toString().split('.').last == gameInfo.gameType,
-      orElse: () => GameType.standard,
-    );
-    final service = GameFactory.createGameService(gameType, GameValidator());
-    final savedState = await service.loadGameState(gameInfo.saveKey);
-    if (savedState != null && mounted) {
-      await Navigator.pushNamed(context, '/game', arguments: GameRouteArgs(gameType: gameType, initialState: savedState));
+    try {
+      final gameType = GameType.values.firstWhere(
+        (type) => type.toString().split('.').last == gameInfo.gameType,
+        orElse: () => GameType.standard,
+      );
+      final service = GameFactory.createGameService(gameType, GameValidator());
+      final savedState = await service.loadGameState(gameInfo.saveKey);
+      if (savedState != null && mounted) {
+        await Navigator.pushNamed(context, '/game', arguments: GameRouteArgs(gameType: gameType, initialState: savedState));
+      }
+    } catch (e) {
+      AppLogger.error('加载保存的游戏失败', e, StackTrace.current);
     }
   }
 

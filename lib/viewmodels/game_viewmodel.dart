@@ -174,8 +174,8 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     B emptyBoard,
     List<List<int>>? regionMatrix,
   ) {
-    final history = HistoryManager.withInitialState(emptyBoard);
-    final stats = GameStats(
+    final history = HistoryManager(initialBoard: emptyBoard);
+    final stats = SessionStatistics(
       board: emptyBoard,
       mistakes: 0,
       totalMoves: 0,
@@ -361,10 +361,6 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   @override
   void selectCell(final int row, final int col) => handleCellTap(row, col);
 
-  /// 单元格被点击
-  @override
-  void cellTapped(final int row, final int col) => handleCellTap(row, col);
-
   /// 通过 Cell 对象选择单元格
   void selectCellByObject(Cell cell) => handleCellTap(cell.row, cell.col);
 
@@ -466,10 +462,19 @@ class GameViewModel<B extends Board> extends ChangeNotifier
 
   // ========== 功能键盘相关方法（委托给 Mixin）==========
 
+  /// 是否可以撤销
+  bool get canUndo => gameState.history.canUndo();
+
+  /// 是否可以重做
+  bool get canRedo => gameState.history.canRedo();
+
   /// 撤销
   void undo() {
     if (!isPlaying) return;
     gameState = gameService.undo(gameState);
+    if (gameState.isAutoMarkMode) {
+      autoMarkCandidates();
+    }
     notifyListeners();
   }
 
@@ -477,12 +482,21 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   void redo() {
     if (!isPlaying) return;
     gameState = gameService.redo(gameState);
+    if (gameState.isAutoMarkMode) {
+      autoMarkCandidates();
+    }
     notifyListeners();
   }
 
   /// 提示
   @override
-  Future<void> hint(BuildContext context) async => super.hint(context);
+  Future<void> hint() async {
+    lastHintMessage = null;
+    await super.hint();
+    if (lastHintMessage != null) {
+      notifyListeners();
+    }
+  }
 
   /// 切换标记模式
   @override
@@ -530,13 +544,8 @@ class GameViewModel<B extends Board> extends ChangeNotifier
 
     notifyListeners();
 
-    if (!isSamuraiGame) {
-      gameTimer.start();
-      unawaited(loadBestScore());
-    } else {
-      gameTimer.start();
-      unawaited(loadBestScore());
-    }
+    gameTimer.start();
+    unawaited(loadBestScore());
   }
 
   /// 重置游戏状态
@@ -572,12 +581,11 @@ class GameViewModel<B extends Board> extends ChangeNotifier
         }
       }
     } else if (selectedCell.candidates.isNotEmpty) {
-      final newBoard = gameState.board.setCellCandidates(
-        selectedCell.row,
-        selectedCell.col,
-        <int>{},
+      final command = ClearCandidatesCommand(
+        row: selectedCell.row,
+        col: selectedCell.col,
       );
-      gameState = gameService.updateBoard(gameState, newBoard as B);
+      gameState = gameService.updateBoardWithCommand(gameState, command);
 
       if (gameState.isAutoMarkMode && isPlaying) {
         if (isSamuraiGame) {
@@ -596,8 +604,8 @@ class GameViewModel<B extends Board> extends ChangeNotifier
 
     final board = initialBoard;
     final solution = initialBoard;
-    final history = HistoryManager.withInitialState(board);
-    final stats = GameStats(
+    final history = HistoryManager(initialBoard: board);
+    final stats = SessionStatistics(
       board: board,
       mistakes: 0,
       totalMoves: 0,

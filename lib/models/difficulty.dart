@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:sudoku/models/game_type.dart';
 import 'package:sudoku/models/strategy.dart';
+import 'package:sudoku/utils/app_logger.dart';
 
 /// 数独难度等级枚举
 enum Difficulty { beginner, easy, medium, hard, expert, master, custom }
@@ -455,14 +456,6 @@ class DifficultyConfig {
       'DifficultyConfig(level: $level, name: $name, '
       'maxStrategyLevel: $maxStrategyLevel, score: $difficultyScore)';
 
-  String toDisplayString({final dynamic localizations}) {
-    final difficultyName = getLocalizedDifficultyName(localizations);
-    final difficultyScoreText = _getLocalizedDifficultyScoreText(localizations);
-    final expectedTimeText = _getLocalizedExpectedTimeText(localizations);
-
-    return '$difficultyName - $difficultyScoreText, $expectedTimeText';
-  }
-
   String getLocalizedDifficultyName(final dynamic localizations) {
     try {
       if (localizations is Map) {
@@ -521,66 +514,14 @@ class DifficultyConfig {
                 return localizations.getString('difficultyCustom') ?? name;
             }
           } catch (e) {
-            // 所有尝试都失败时使用默认名称
+            AppLogger.warning('All localization attempts failed for difficulty: $name', e);
           }
         }
       }
     } catch (e) {
-      // 本地化获取失败时使用默认名称
+      AppLogger.warning('Failed to get localized difficulty name: $name', e);
     }
     return name;
-  }
-
-  String _getLocalizedDifficultyScoreText(final dynamic localizations) {
-    const difficultyScoreKey = 'difficultyScore';
-
-    try {
-      if (localizations is Map) {
-        final difficultyScoreText = localizations[difficultyScoreKey] ?? '难度系数';
-        return '$difficultyScoreText: ${(difficultyScore * 100).toInt()}%';
-      }
-    } catch (e) {
-      // 本地化获取失败时使用默认文本
-    }
-    return '难度系数: ${(difficultyScore * 100).toInt()}%';
-  }
-
-  String _getLocalizedExpectedTimeText(final dynamic localizations) {
-    const expectedTimeKey = 'expectedTime';
-    const unlimitedTimeKey = 'unlimitedTime';
-
-    try {
-      if (localizations is Map) {
-        final expectedTimeText = localizations[expectedTimeKey] ?? '预计时间';
-        final unlimitedTimeText = localizations[unlimitedTimeKey] ?? '时间不限';
-
-        if (minExpectedTime > 0 && maxExpectedTime > 0) {
-          return '$expectedTimeText: ${_formatTime(minExpectedTime)}-${_formatTime(maxExpectedTime)}';
-        } else {
-          return unlimitedTimeText;
-        }
-      }
-    } catch (e) {
-      // 本地化获取失败时使用默认文本
-    }
-
-    if (minExpectedTime > 0 && maxExpectedTime > 0) {
-      return '预计时间: ${_formatTime(minExpectedTime)}-${_formatTime(maxExpectedTime)}';
-    } else {
-      return '时间不限';
-    }
-  }
-
-  String _formatTime(final int seconds) {
-    if (seconds < 60) {
-      return '$seconds秒';
-    }
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    if (remainingSeconds == 0) {
-      return '$minutes分钟';
-    }
-    return '$minutes分$remainingSeconds秒';
   }
 
   @override
@@ -625,18 +566,12 @@ extension DifficultyExtension on Difficulty {
 
   static Difficulty fromIdentifier(final String identifier) {
     for (final difficulty in Difficulty.values) {
-      if (difficulty.name == identifier) {
+      if (difficulty.name == identifier ||
+          difficulty.identifier == identifier ||
+          difficulty.toString() == identifier) {
         return difficulty;
       }
     }
-    for (final difficulty in Difficulty.values) {
-      if (difficulty.identifier == identifier) {
-        return difficulty;
-      }
-    }
-    return Difficulty.values.firstWhere(
-      (d) => d.toString() == identifier,
-      orElse: () => Difficulty.medium,
-    );
+    return Difficulty.medium;
   }
 }

@@ -4,15 +4,10 @@ import 'package:sudoku/index.dart';
 mixin GameStateMixin<B extends Board, T extends GameState<B>> on ChangeNotifier {
   GameState<B> get gameState;
   set gameState(GameState<B> value);
-  
+
   GameTimer get gameTimer;
   GameService<B> get gameService;
-  
-  void updateGameState(GameState<B> newState) {
-    gameState = newState;
-    notifyListeners();
-  }
-  
+
   bool get isPlaying => gameState.startTime != null && !gameState.isCompleted;
   bool get isPaused => gameState.startTime != null && !gameState.isCompleted && gameTimer.isPaused;
   bool get isCompleted => gameState.isCompleted;
@@ -22,24 +17,39 @@ mixin GameStateMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
   bool get showSolution => gameState.isShowingSolution;
   double get completionPercentage => gameState.completionPercentage;
   int get errorCount => gameState.mistakes;
-  
+
   Future<void> toggleMarkMode() async {
-    updateGameState(gameState.copyWith(isMarkMode: !gameState.isMarkMode));
+    gameState = gameState.copyWith(isMarkMode: !gameState.isMarkMode);
+    notifyListeners();
   }
-  
+
   Future<void> toggleAutoMarkMode() async {
-    updateGameState(gameState.copyWith(isAutoMarkMode: !gameState.isAutoMarkMode));
+    gameState = gameState.copyWith(isAutoMarkMode: !gameState.isAutoMarkMode);
+    notifyListeners();
   }
-  
+
   Future<void> toggleShowSolution() async {
     if (gameState.isShowingSolution) {
-      updateGameState(gameService.hideSolution(gameState));
+      // 隐藏答案：从 savedBoard 恢复棋盘
+      final savedBoard = gameState.savedBoard;
+      if (savedBoard != null) {
+        gameState = gameService.hideSolution(gameState).copyWith(board: savedBoard, savedBoard: null);
+      } else {
+        gameState = gameService.hideSolution(gameState);
+      }
     } else {
-      updateGameState(gameService.showSolution(gameState));
+      // 显示答案：保存当前棋盘
+      gameState = gameService.showSolution(gameState).copyWith(
+        savedBoard: gameState.board,
+      );
     }
+    notifyListeners();
   }
-  
+
   Future<void> resetGame() async {
-    updateGameState(gameService.resetGameState(gameState));
+    gameState = gameService.resetGameState(gameState);
+    gameTimer..reset()
+    ..start();
+    notifyListeners();
   }
 }

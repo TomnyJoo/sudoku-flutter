@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
 
@@ -103,7 +104,6 @@ class _FinishScreenState<
     final currentMistakes = _currentMistakes;
     final localizedDifficulty = _localizedDifficulty();
 
-    // 防御：无效成绩（时间为0）不保存、不判断新纪录
     if (currentTime <= 0) {
       return FinishScreenData(
         currentTime: currentTime,
@@ -115,19 +115,15 @@ class _FinishScreenState<
       );
     }
 
-    // ① 优先使用 ViewModel 中已加载的最佳成绩
     BestScoreRecord? bestScore;
     try {
-      // 尝试从 ViewModel 获取缓存的最佳成绩
       final viewModelBestScore = _viewModel().cachedBestScore;
       if (viewModelBestScore != null && viewModelBestScore.time > 0) {
         bestScore = viewModelBestScore;
       } else {
-        // ViewModel 中没有，从统计系统读取
         final stats = await StatisticsManager.getGameStatistics(widget.gameType);
         final difficultyStats = stats.difficultyStats[_currentDifficulty];
         bestScore = difficultyStats?.bestScoreRecord;
-        // 过滤无效记录（time <= 0 的脏数据）
         if (bestScore != null && bestScore.time <= 0) {
           bestScore = null;
         }
@@ -137,7 +133,6 @@ class _FinishScreenState<
       bestScore = null;
     }
 
-    // ② 基于真实历史数据判断是否为新纪录
     final bool isNewBest;
     if (bestScore == null) {
       isNewBest = currentTime > 0;
@@ -146,12 +141,10 @@ class _FinishScreenState<
           (currentTime == bestScore.time && currentMistakes < bestScore.mistakes);
     }
 
-    // 确定显示的最佳成绩
     final displayBest = isNewBest
         ? BestScoreRecord(time: currentTime, mistakes: currentMistakes, timestamp: DateTime.now())
         : bestScore;
 
-    // 保存统计（使用捕获的值，防止异步期间状态变化）
     await Future.wait([
       _saveStatistics(time: currentTime, mistakes: currentMistakes),
       _clearCurrentGame(),
@@ -200,7 +193,6 @@ class _FinishScreenState<
     });
   }
 
-  /// 仅加载数据（不保存），用于重试场景
   Future<FinishScreenData> _loadDataOnly() async {
     final currentTime = _currentTime;
     final currentMistakes = _currentMistakes;
@@ -219,12 +211,10 @@ class _FinishScreenState<
 
     BestScoreRecord? bestScore;
     try {
-      // 尝试从 ViewModel 获取缓存的最佳成绩
       final viewModelBestScore = _viewModel().cachedBestScore;
       if (viewModelBestScore != null && viewModelBestScore.time > 0) {
         bestScore = viewModelBestScore;
       } else {
-        // ViewModel 中没有，从统计系统读取
         final stats = await StatisticsManager.getGameStatistics(widget.gameType);
         final difficultyStats = stats.difficultyStats[_currentDifficulty];
         bestScore = difficultyStats?.bestScoreRecord;
@@ -267,7 +257,6 @@ class _FinishScreenState<
           return _buildErrorScreen(snapshot.error!);
         }
         final data = snapshot.data!;
-        // 新纪录弹窗（仅一次）
         if (data.isNewBest && !_hasShownNewRecordDialog) {
           _hasShownNewRecordDialog = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -372,11 +361,13 @@ class _FinishScreenState<
         automaticallyImplyLeading: false,
       ),
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.finishScreenGradient,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? AppColors.homeBackgroundGradientDark
+                : AppColors.homeBackgroundGradientLight,
           ),
         ),
         child: SafeArea(
@@ -421,34 +412,47 @@ class _FinishScreenState<
     ),
   );
 
-  Widget _buildCelebrationIcon() => AnimatedBuilder(
-    animation: _scaleAnimation,
-    builder: (context, child) => Transform.scale(
-      scale: _scaleAnimation.value,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              context.successColor,
-              context.successColor.withAlpha(205),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: context.successColor.withAlpha(102),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+  Widget _buildCelebrationIcon() {
+    final isDark = context.isDarkMode;
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    context.successColor.withAlpha(isDark ? 40 : 70),
+                    context.successColor.withAlpha(isDark ? 25 : 50),
+                  ],
+                ),
+                border: Border.all(
+                  color: context.successColor.withAlpha(isDark ? 40 : 80),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 30 : 10),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.celebration, size: 48, color: context.successColor),
             ),
-          ],
+          ),
         ),
-        child: const Icon(Icons.celebration, size: 48, color: Colors.white),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildCongratulationsText() => Container(
     padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
@@ -508,42 +512,50 @@ class _FinishScreenState<
         ),
       );
 
-  Widget _buildDifficultyCard(String difficulty) => Container(
-    margin: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [context.warningColor, context.warningColor.withAlpha(205)],
-      ),
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: context.warningColor.withAlpha(77),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.star, size: 18, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(
-            difficulty,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+  Widget _buildDifficultyCard(String difficulty) {
+    final isDark = context.isDarkMode;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: context.warningColor.withAlpha(isDark ? 25 : 50),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: context.warningColor.withAlpha(isDark ? 40 : 100),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(isDark ? 30 : 10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.star, size: 18, color: context.warningColor),
+                const SizedBox(width: 8),
+                Text(
+                  difficulty,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDark ? Colors.white : AppColors.darkText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildStatRow({
     required String label,
@@ -553,64 +565,70 @@ class _FinishScreenState<
     required Color iconColor,
     required Color textColor,
   }) {
+    final isDark = context.isDarkMode;
     final isBetter = currentValue == bestValue;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [context.cardColor, context.cardColor.withAlpha(230)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(39),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor.withAlpha(178),
-                fontWeight: FontWeight.w500,
-              ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(isDark ? 10 : 70),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withAlpha(isDark ? 15 : 120),
             ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(isDark ? 30 : 10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            child: Column(
               children: [
-                _buildStatItem(
-                  label: LocalizationUtils.app(context).current,
-                  value: currentValue,
-                  icon: icon,
-                  iconColor: iconColor,
-                  highlight: isBetter,
-                  textColor: textColor,
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: textColor.withAlpha(178),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                Container(
-                  width: 1,
-                  height: 28,
-                  color: context.dividerColor.withAlpha(128),
-                ),
-                _buildStatItem(
-                  label: LocalizationUtils.app(context).bestScore,
-                  value: bestValue,
-                  icon: Icons.emoji_events,
-                  iconColor: Colors.amber,
-                  highlight: false,
-                  textColor: textColor,
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildStatItem(
+                      label: LocalizationUtils.app(context).current,
+                      value: currentValue,
+                      icon: icon,
+                      iconColor: iconColor,
+                      highlight: isBetter,
+                      textColor: textColor,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: context.dividerColor.withAlpha(128),
+                    ),
+                    _buildStatItem(
+                      label: LocalizationUtils.app(context).bestScore,
+                      value: bestValue,
+                      icon: Icons.emoji_events,
+                      iconColor: Colors.amber,
+                      highlight: false,
+                      textColor: textColor,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -687,13 +705,13 @@ class _FinishScreenState<
             height: buttonSize.height,
             child:
                 ElevatedButton.icon(
-                  icon: Icon(Icons.arrow_back, color: context.primaryColor),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
                   label: Text(
                     LocalizationUtils.app(context).backToMenu,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: context.primaryColor,
+                      color: Colors.white,
                     ),
                   ),
                   style:
@@ -714,11 +732,7 @@ class _FinishScreenState<
                         ),
                       ),
                   onPressed: _handleBackToMenu,
-                ).withGradientBackground(
-                  context.isDarkMode
-                      ? AppColors.darkButtonLoadGameGradient
-                      : AppColors.buttonLoadGameGradient,
-                ),
+                ).withGradientBackground(context.buttonPrimaryGradient),
           ),
         ),
       ],
@@ -730,7 +744,6 @@ class _FinishScreenState<
       await widget.onStartNewGame!(context);
       return;
     }
-    // 默认行为
     final viewModel = _viewModel();
     await showDialog(
       context: context,
@@ -743,7 +756,7 @@ class _FinishScreenState<
         DifficultyExtension.fromIdentifier(_currentDifficulty),
       );
       if (mounted) {
-        Navigator.of(context).pop(); // 关闭对话框
+        Navigator.of(context).pop();
         await Navigator.of(context).pushReplacementNamed(GameFactory.getGameRoute(GameType.values.firstWhere((g) => g.toString().split('.').last == widget.gameType)));
       }
     } catch (e) {

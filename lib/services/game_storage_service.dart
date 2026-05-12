@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/exceptions/error_handler.dart';
 import 'package:sudoku/models/board.dart';
 import 'package:sudoku/models/game_state.dart';
-import 'package:sudoku/utils/constants/app_constants.dart';
+import 'package:sudoku/utils/app_logger.dart';
 
 /// 保存的游戏信息
 class SavedGameInfo {
@@ -50,14 +51,21 @@ class GameStorageService {
     }, operationName: '保存游戏状态');
   }
 
-  /// 加载游戏状态
-  static Future<GameState?> loadGameState(String saveKey, Board Function(Map<String, dynamic>) boardFromJson) async =>
-      ErrorHandler().handleAsync(() async {
+  /// 加载游戏状态（泛型，支持具体 Board 子类型）
+  static Future<GameState<B>?> loadGameState<B extends Board>(
+    String saveKey,
+    B Function(Map<String, dynamic>) boardFromJson,
+  ) async => ErrorHandler().handleAsync(() async {
         final prefs = await SharedPreferences.getInstance();
         final stateJson = prefs.getString(saveKey);
         if (stateJson == null) return null;
-        final stateData = jsonDecode(stateJson);
-        return GameState.fromJson(stateData, boardFromJson);
+        try {
+          final stateData = jsonDecode(stateJson);
+          return GameState.fromJson(stateData, boardFromJson);
+        } catch (e) {
+          AppLogger.error('反序列化游戏状态失败: $saveKey', e, StackTrace.current);
+          return null;
+        }
       }, operationName: '加载游戏状态');
 
   /// 清除游戏状态

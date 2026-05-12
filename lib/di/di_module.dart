@@ -6,7 +6,6 @@ import 'package:sudoku/index.dart';
 class DiModule {
   /// 核心服务
   static List<SingleChildWidget> coreProviders = [
-    Provider<BoardPool>(create: (_) => BoardPool()),
     Provider<GameValidator>(create: (_) => GameValidator()),
     Provider<TemplateManager>(create: (_) => TemplateManager()),
     Provider<GameGenerator>(create: (_) => GameGenerator()),

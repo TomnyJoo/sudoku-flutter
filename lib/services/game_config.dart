@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/models/index.dart';
 import 'package:sudoku/utils/app_logger.dart';
-import 'package:sudoku/utils/constants/app_constants.dart';
 /// 游戏配置管理类，负责从配置文件加载游戏规则
 class GameConfig {
   

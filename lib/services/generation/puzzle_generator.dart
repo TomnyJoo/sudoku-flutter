@@ -49,29 +49,14 @@ class PuzzleGenerator {
           }
         }
       } else if (gameType == GameType.killer) {
-        // 杀手数独需要同时加载笼子模板和 rrn17 模板
-        // 笼子模板是必需的，rrn17 模板是可选的（用于加速生成）
-        bool cagesLoaded = false;
-
-        if (loadStatus.killerLoaded) {
-          final cages = await templateManager.loadKillerCageShapes();
-          if (cages != null) {
-            final cagesJson = cages.map((cage) => cage.toJson()).toList();
-            templateData = {'cages': cagesJson};
-            cagesLoaded = true;
-          }
-        }
-
+        // 杀手数独：rrn17 模板用于加速终盘生成，笼子由生成器动态划分
         if (loadStatus.rrn17Loaded) {
           final template = await templateManager.loadRrn17Solutions();
           if (template != null) {
-            templateData ??= {};
-            templateData['solutionData'] = template.solutionData;
+            templateData = {'solutionData': template.solutionData};
           }
         }
-
-        // 杀手数独需要笼子模板才能继续
-        templateLoaded = cagesLoaded;
+        templateLoaded = true;
       } else if (gameType == GameType.standard) {
         // 标准数独可以使用 rrn17 模板
         if (loadStatus.rrn17Loaded) {

@@ -1,8 +1,8 @@
+import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/models/index.dart';
 import 'package:sudoku/services/solving/strategies/killer_strategies.dart';
 import 'package:sudoku/services/solving/strategy_engine.dart';
 import 'package:sudoku/utils/app_logger.dart';
-import 'package:sudoku/utils/constants/app_constants.dart';
 
 /// 棋盘上下文 - 用于策略分析
 class BoardContext {
@@ -183,21 +183,36 @@ class CandidateCalculator {
       // 第一步：初始化候选数为 {1,2,3,4,5,6,7,8,9}
       _initializeCandidates();
 
-      // 第二步：如果是杀手数独，设置笼子信息到上下文
-      if (_killerBoard != null) {
-        _context.setKillerCages(_killerBoard!.cages);
-
-        // 第三步：应用笼子约束（杀手数独的核心约束，优先级最高）
-        _applyKillerCageConstraints();
-      }
-
-      // 第四步：应用区域互异约束（行、列、宫约束）
+      // 第二步：应用区域互异约束（行、列、宫约束）
+      // 必须先应用区域约束，移除同行/列/宫已填数字
       _applyRegionConstraints();
 
-      // 第五步：应用高级策略（统一使用策略系统）
+      // 第三步：如果是杀手数独，设置笼子信息并应用笼子约束
+      // 区域约束后候选数已缩小，笼子约束在此基础上进一步收缩
+      if (_killerBoard != null) {
+        _context.setKillerCages(_killerBoard!.cages);
+        // 循环应用笼子约束和区域约束，直到无变化（确保约束充分传播）
+        bool changed = true;
+        int maxRounds = 5;
+        while (changed && maxRounds-- > 0) {
+          changed = false;
+          final before = _captureAllCandidates();
+          _applyKillerCageConstraints();
+          _applyRegionConstraints();
+          if (_candidatesChangedFrom(before)) {
+            changed = true;
+          }
+        }
+      }
+
+      // 第四步：应用高级策略（统一使用策略系统）
       if (useAdvancedStrategies) {
-        StrategyService.initialize(); // 初始化策略服务（确保只初始化一次）
-        StrategyService.instance.applyStrategies(_context);
+        StrategyService.initialize();
+        if (_killerBoard != null) {
+          StrategyService.instance.applyStrategiesForGame(_context, GameType.killer);
+        } else {
+          StrategyService.instance.applyStrategies(_context);
+        }
       }
 
       // 构建结果
@@ -210,9 +225,12 @@ class CandidateCalculator {
         }
       }
 
+      // 验证候选数一致性（仅记录警告，不阻断计算）
+      _validateCandidates(result);
+
       return result;
-    } catch (e) {
-      AppLogger.warning('候选数计算失败: $e');
+    } catch (e, stackTrace) {
+      AppLogger.warning('候选数计算失败: $e\n$stackTrace');
       // 返回空结果，表示无解
       return {};
     }
@@ -409,5 +427,49 @@ class CandidateCalculator {
         (r, c) => _board.getCell(r, c).value,
       );
     }
+  }
+
+  /// 验证候选数一致性
+  bool _validateCandidates(Map<String, Set<int>> result) {
+    bool valid = true;
+    for (int r = 0; r < _board.size; r++) {
+      for (int c = 0; c < _board.size; c++) {
+        if (_board.getCell(r, c).value != null) continue;
+
+        final candidates = result['$r,$c'];
+        if (candidates == null || candidates.isEmpty) {
+          AppLogger.warning('空候选数 ($r,$c): 棋盘状态不一致');
+          valid = false;
+        }
+      }
+    }
+    return valid;
+  }
+
+  /// 快照所有候选数（用于检测变化）
+  Map<String, Set<int>> _captureAllCandidates() {
+    final snapshot = <String, Set<int>>{};
+    for (int r = 0; r < _board.size; r++) {
+      for (int c = 0; c < _board.size; c++) {
+        snapshot['$r,$c'] = _context.getCandidates(r, c).toSet();
+      }
+    }
+    return snapshot;
+  }
+
+  /// 检查候选数是否与快照不同
+  bool _candidatesChangedFrom(Map<String, Set<int>> snapshot) {
+    for (int r = 0; r < _board.size; r++) {
+      for (int c = 0; c < _board.size; c++) {
+        final key = '$r,$c';
+        final current = _context.getCandidates(r, c);
+        final before = snapshot[key];
+        if (before == null || current.length != before.length) return true;
+        for (final num in current) {
+          if (!before.contains(num)) return true;
+        }
+      }
+    }
+    return false;
   }
 }

@@ -23,8 +23,9 @@ mixin GameLifecycleMixin<B extends Board, T extends GameState<B>> on ChangeNotif
   /// 加载指定难度的最佳成绩（子类实现）
   Future<void> loadBestScore([String? difficulty]);
 
-  bool get isPlaying => gameState.startTime != null && !gameState.isCompleted;
-  bool get isPaused => gameState.startTime != null && !gameState.isCompleted && gameTimer.isPaused;
+  /// isPlaying 和 isPaused 由使用此 mixin 的类提供
+  bool get isPlaying;
+  bool get isPaused;
 
   void updateGenerationStage(GenerationStage stage) {
     generationStage = stage;

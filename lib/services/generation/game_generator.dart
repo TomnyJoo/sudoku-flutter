@@ -19,7 +19,7 @@ class GameGenerator {
       try {
         // 使用 GameFactory 创建生成器
         final generator = GameFactory.createGameGenerator(gameType);
-        if (generator != null && generator is IGameGenerator) {
+        if (generator is IGameGenerator) {
           _generators[gameType] = generator;
         } else {
           AppLogger.warning('创建游戏类型 $gameType 生成器失败');

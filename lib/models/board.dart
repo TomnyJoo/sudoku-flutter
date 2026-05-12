@@ -1,15 +1,15 @@
 import 'dart:math';
+import 'package:sudoku/constants/game_constants.dart';
 import 'package:sudoku/models/cell.dart';
 import 'package:sudoku/models/killer_cage.dart';
 import 'package:sudoku/models/region.dart';
-import 'package:sudoku/models/samurai_constants.dart';
-import 'package:sudoku/models/window_constants.dart';
 
 /// 数独棋盘抽象基类，封装棋盘状态和操作，提供统一的接口，支持不同类型的数独游戏（标准、锯齿、对角线等）
 abstract class Board {
   /// 构造棋盘模型
-  Board({required this.size, required this.cells, final List<Region>? regions})
-    : regions = regions ?? [] {
+  Board({required this.size, required List<List<Cell>> cells, final List<Region>? regions})
+    : cells = cells.map(List<Cell>.unmodifiable).toList(),
+      regions = regions ?? [] {
     // 验证棋盘尺寸
     if (size <= 0) {
       final errorMsg = '棋盘尺寸必须大于0: $size';
@@ -36,11 +36,6 @@ abstract class Board {
         }
       }
     }
-  }
-
-  /// 从JSON创建棋盘实例（需要子类实现）
-  static Board fromJson(Map<String, dynamic> json) {
-    throw UnsupportedError('Board.fromJson()必须在子类中实现');
   }
 
   /// 从JSON创建单元格矩阵
@@ -424,14 +419,7 @@ abstract class Board {
   Board createInstance(
     final List<List<Cell>> newCells, {
     final List<Region>? regions,
-  }) => throw UnsupportedError(
-    'createInstance() must be implemented by subclasses',
-  );
-
-  /// 创建空棋盘的便捷方法 - 抽象方法，需由子类实现
-  static Board empty({int size = 9}) {
-    throw UnsupportedError('Board.empty() must be implemented by subclasses');
-  }
+  });
 
   /// 创建所有区域（包括通用区域和特殊区域）,子类必须实现此方法，确保区域创建的统一性
   List<Region> createRegions({
@@ -1406,7 +1394,8 @@ class SamuraiBoard extends Board {
     return count;
   }
 
-  void mergeSubBoard(Board subBoard, int startRow, int startCol) {
+  SamuraiBoard mergeSubBoard(Board subBoard, int startRow, int startCol) {
+    final newCells = cells.map(List<Cell>.from).toList();
     for (int i = 0; i < 9; i++) {
       for (int j = 0; j < 9; j++) {
         final targetRow = startRow + i;
@@ -1415,7 +1404,7 @@ class SamuraiBoard extends Board {
             targetCol >= 0 && targetCol < boardSize) {
           final subCell = subBoard.getCell(i, j);
           if (subCell.value != null) {
-            cells[targetRow][targetCol] = cells[targetRow][targetCol].copyWith(
+            newCells[targetRow][targetCol] = newCells[targetRow][targetCol].copyWith(
               value: subCell.value,
               isFixed: true,
             );
@@ -1423,6 +1412,7 @@ class SamuraiBoard extends Board {
         }
       }
     }
+    return SamuraiBoard(cells: newCells, regions: regions);
   }
 
   /// 获取指定索引的子网格

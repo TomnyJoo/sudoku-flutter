@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
-import 'package:sudoku/views/statistics/components/game_comparison_tab.dart';
-import 'package:sudoku/views/statistics/components/incomplete_games_tab.dart';
-import 'package:sudoku/views/statistics/components/individual_games_tab.dart';
-import 'package:sudoku/views/statistics/components/overview_tab.dart';
 
 /// Summary：游戏统计页面
 class GameStatisticsScreen extends StatefulWidget {
@@ -16,7 +12,7 @@ class GameStatisticsScreen extends StatefulWidget {
 /// Summary：游戏统计页面状态管理
 class _GameStatisticsScreenState extends State<GameStatisticsScreen>
     with SingleTickerProviderStateMixin {
-  Map<String, GameStatistics> _allStatistics = {};
+  Map<String, Statistics> _allStatistics = {};
   bool _isLoading = true;
   late TabController _tabController;
 

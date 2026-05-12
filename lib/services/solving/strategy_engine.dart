@@ -1,5 +1,6 @@
 import 'package:sudoku/models/index.dart';
 import 'package:sudoku/services/solving/candidate_calculator.dart';
+import 'package:sudoku/services/solving/strategies/advanced_strategies.dart';
 import 'package:sudoku/services/solving/strategies/killer_strategies.dart';
 import 'package:sudoku/services/solving/strategies/solving_strategies.dart';
 
@@ -26,37 +27,41 @@ abstract class Strategy {
 class StrategyRegistry {
   static final Map<StrategyType, Strategy> _strategies = {};
 
+  /// 按执行优先级排序的策略类型列表（注册顺序即执行顺序）
+  static final List<StrategyType> _executionOrder = [];
+
   static void register(Strategy strategy) {
     _strategies[strategy.type] = strategy;
+    if (!_executionOrder.contains(strategy.type)) {
+      _executionOrder.add(strategy.type);
+    }
   }
 
   static Strategy? get(StrategyType type) => _strategies[type];
 
-  /// 获取所有已注册的策略
-  static List<Strategy> getAllStrategies() => _strategies.values.toList();
+  /// 获取所有已注册的策略（按注册顺序）
+  static List<Strategy> getAllStrategies() =>
+      _executionOrder.map((type) => _strategies[type]).whereType<Strategy>().toList();
 
-  static List<Strategy> getForGame(GameType gameType) => _strategies.values
-      .where((s) => s.applicableGames.contains(gameType))
-      .toList()
-      ..sort((a, b) => a.level.index.compareTo(b.level.index));
+  /// 获取适用于指定游戏类型的策略（按注册顺序）
+  static List<Strategy> getForGame(GameType gameType) =>
+      _executionOrder
+          .map((type) => _strategies[type])
+          .whereType<Strategy>()
+          .where((s) => s.applicableGames.contains(gameType))
+          .toList();
 
   static List<Strategy> getForLevel(StrategyLevel maxLevel) =>
-      _strategies.values
+      getAllStrategies()
           .where((s) => s.level.index <= maxLevel.index)
-          .toList()
-          ..sort((a, b) => a.level.index.compareTo(b.level.index));
+          .toList();
 
   static List<Strategy> getForGameAndLevel(
     GameType gameType,
     StrategyLevel maxLevel,
-  ) => _strategies.values
-      .where(
-        (s) =>
-            s.applicableGames.contains(gameType) &&
-            s.level.index <= maxLevel.index,
-      )
-      .toList()
-      ..sort((a, b) => a.level.index.compareTo(b.level.index));
+  ) => getForGame(gameType)
+      .where((s) => s.level.index <= maxLevel.index)
+      .toList();
 }
 
 /// 策略服务 - 负责初始化和执行策略
@@ -79,38 +84,84 @@ class StrategyService {
   }
 
   void _registerAllStrategies() {
-    // 基础策略
+    // 按执行优先级注册（注册顺序即执行顺序）
+    // 基础
+    StrategyRegistry.register(const KillerCageConstraintStrategy());
     StrategyRegistry.register(const NakedSingleStrategy());
     StrategyRegistry.register(const HiddenSingleStrategy());
-    // 中级策略
+    // 中级
     StrategyRegistry.register(const NakedPairStrategy());
     StrategyRegistry.register(const HiddenPairStrategy());
     StrategyRegistry.register(const LockedCandidateStrategy());
-    // 高级策略
+    StrategyRegistry.register(const Killer45RuleStrategy());
+    StrategyRegistry.register(const KillerOverlapEliminationStrategy());
+    StrategyRegistry.register(const KillerCageBlockingStrategy());
+    // 高级
     StrategyRegistry.register(const NakedTripleStrategy());
     StrategyRegistry.register(const HiddenTripleStrategy());
     StrategyRegistry.register(const XWingStrategy());
     StrategyRegistry.register(const SwordfishStrategy());
-    // 杀手数独策略
-    StrategyRegistry.register(const KillerCageConstraintStrategy());
-    StrategyRegistry.register(const Killer45RuleStrategy());
-    StrategyRegistry.register(const KillerOverlapEliminationStrategy());
-    StrategyRegistry.register(const KillerCageBlockingStrategy());
+    StrategyRegistry.register(const JellyfishStrategy());
+    StrategyRegistry.register(const XYWingStrategy());
+    StrategyRegistry.register(const XYZWingStrategy());
+    StrategyRegistry.register(const UniqueRectangleStrategy());
+    StrategyRegistry.register(const TwoStringKiteStrategy());
+    StrategyRegistry.register(const SkyscraperStrategy());
+    StrategyRegistry.register(const EmptyRectangleStrategy());
+    StrategyRegistry.register(const FinnedXWingStrategy());
+    StrategyRegistry.register(const FinnedSwordfishStrategy());
   }
 
-  /// 应用所有策略到棋盘上下文
-  void applyStrategies(BoardContext context) {
+  /// 应用所有策略到棋盘上下文（迭代执行直到无变化）
+  void applyStrategies(BoardContext context, {int maxIterations = 20}) {
     final strategies = StrategyRegistry.getAllStrategies();
-    for (final strategy in strategies) {
-      strategy.apply(context);
+
+    int iterations = 0;
+    bool changed = true;
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      for (final strategy in strategies) {
+        if (strategy.apply(context)) {
+          changed = true;
+          break;
+        }
+      }
+      iterations++;
     }
   }
 
-  /// 应用指定游戏类型的策略
-  void applyStrategiesForGame(BoardContext context, GameType gameType) {
+  /// 应用指定游戏类型的策略（迭代执行直到无变化）
+  /// 基础策略使用 break 模式，中级以上策略使用 continue 模式
+  void applyStrategiesForGame(BoardContext context, GameType gameType, {int maxIterations = 50}) {
     final strategies = StrategyRegistry.getForGame(gameType);
-    for (final strategy in strategies) {
-      strategy.apply(context);
+
+    // 分离基础策略和中级以上策略（保持注册顺序）
+    final basicStrategies = strategies.where((s) => s.level == StrategyLevel.basic).toList();
+    final advancedStrategies = strategies.where((s) => s.level != StrategyLevel.basic).toList();
+
+    int iterations = 0;
+    bool changed = true;
+    while (changed && iterations < maxIterations) {
+      changed = false;
+
+      // 阶段1：基础策略使用 break 模式
+      for (final strategy in basicStrategies) {
+        if (strategy.apply(context)) {
+          changed = true;
+          break;
+        }
+      }
+
+      if (!changed) {
+        // 阶段2：中级以上策略使用 continue 模式
+        for (final strategy in advancedStrategies) {
+          if (strategy.apply(context)) {
+            changed = true;
+          }
+        }
+      }
+
+      iterations++;
     }
   }
 }

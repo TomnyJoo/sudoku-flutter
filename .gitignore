@@ -6,9 +6,6 @@
 # Flutter/Dart/Pub related
 **/doc/api/
 **/flutter_export_environment.sh
-**/lib/generated/
-**/lib/l10n/
-**/lib/src/
 **/pubspec.lock
 **/flutter_web_plugins/
 
