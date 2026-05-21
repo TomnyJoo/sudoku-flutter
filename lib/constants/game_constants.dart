@@ -146,14 +146,6 @@ class SamuraiConstants {
     'center',
   ];
 
-  // 重叠区域的位置
-  static const List<(int, int, int, int)> overlapRegions = [
-    (6, 6, 8, 8),    // 左上与中心重叠
-    (6, 14, 8, 16),   // 右上与中心重叠
-    (14, 6, 16, 8),   // 左下与中心重叠
-    (14, 14, 16, 16), // 右下与中心重叠
-  ];
-
   // 难度级别对应的提示数
   static const Map<String, int> difficultyClues = {
     'beginner': 45,
