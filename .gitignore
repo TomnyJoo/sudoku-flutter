@@ -76,3 +76,12 @@
 # Temporary files
 **/tmp
 **/temp
+
+# IDE/Editor
+**/.trae/
+
+# Dart/Flutter build artifacts
+**/.dart_tool/
+
+# Documentation
+**/docs/
