@@ -164,7 +164,10 @@ class GameValidator {
       }
     }
 
-    final totalCells = state.solution.size * state.solution.size;
+    int totalCells = state.solution.size * state.solution.size;
+    if (state.solution is SamuraiBoard) {
+      totalCells = (state.solution as SamuraiBoard).playableCellCount;
+    }
     if (solutionCount < totalCells) return false;
 
     return true;

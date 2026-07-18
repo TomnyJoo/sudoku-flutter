@@ -1,4 +1,11 @@
-import 'package:sudoku/index.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sudoku/exceptions/exceptions.dart';
+import 'package:sudoku/models/index.dart';
+import 'package:sudoku/services/generation/game_generator.dart';
+import 'package:sudoku/services/generation/template_manager.dart';
+import 'package:sudoku/utils/app_logger.dart';
+import 'isolate_game_generator.dart'
+    if (dart.library.html) 'isolate_game_generator_stub.dart';
 
 /// 游戏生成服务
 ///
@@ -90,8 +97,21 @@ class PuzzleGenerator {
 
     // 如果模板加载失败，直接回退到主线程生成
     if (!templateLoaded) {
-      AppLogger.error('加载模板失败，回退到主线程生成');
+      AppLogger.warning('加载模板失败，回退到主线程生成');
 
+      return _generateInMainThread(
+        gameType: gameType,
+        size: size,
+        difficulty: difficulty,
+        onStageUpdate: onStageUpdate,
+        isCancelled: isCancelled,
+        templateData: templateData,
+      );
+    }
+
+    // Web 平台不支持 Isolate，直接使用主线程生成
+    if (kIsWeb) {
+      AppLogger.info('Web 平台不支持 Isolate，使用主线程生成');
       return _generateInMainThread(
         gameType: gameType,
         size: size,
@@ -119,7 +139,7 @@ class PuzzleGenerator {
       return result;
     } catch (e) {
       // 如果 Isolate 执行失败，回退到主线程
-      AppLogger.error('Isolate 生成失败，回退到主线程生成: $e');
+      AppLogger.warning('Isolate 生成失败，回退到主线程生成: $e');
       return _generateInMainThread(
         gameType: gameType,
         size: size,

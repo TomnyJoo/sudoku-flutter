@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sudoku/index.dart';
@@ -95,10 +97,10 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      _viewModel.saveGame();
+      await _viewModel.saveGameBlocking();
     }
   }
 
@@ -106,7 +108,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onGameStateChanged);
-    _viewModel.saveGameSync();
+    unawaited(_viewModel.saveGameBlocking());
     _viewModel.pauseGame(notify: false);
     super.dispose();
   }
@@ -144,14 +146,14 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) {
-              _viewModel.saveGame().then((_) {
-                if (mounted) {
-                  navigator.pop();
+                if (!didPop) {
+                  _viewModel.saveGameBlocking().then((_) {
+                    if (mounted) {
+                      navigator.pop();
+                    }
+                  });
                 }
-              });
-            }
-          },
+              },
           child: LayoutBuilder(
             builder: (context, constraints) {
               final availableWidth = constraints.maxWidth;
@@ -184,7 +186,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
                         leading: IconButton(
                           icon: Icon(Icons.arrow_back, color: iconColor),
                           onPressed: () async {
-                            await _viewModel.saveGame();
+                            await _viewModel.saveGameBlocking();
                             if (context.mounted) {
                               Navigator.pop(context);
                             }
@@ -445,7 +447,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
               color: isDarkMode ? Colors.white : Colors.black87,
             ),
             onPressed: () async {
-              await _viewModel.saveGame();
+              await _viewModel.saveGameBlocking();
               if (context.mounted) {
                 Navigator.pop(context);
               }
@@ -668,6 +670,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
       },
       buttonSize: buttonSize,
       getNumberCount: (context, number) => viewModel.getNumberCount(number),
+      isEnabled: viewModel.isPlaying,
     );
 
   Widget _buildFunctionKeyboard(BuildContext context, GameViewModel<B> viewModel, double buttonSize) => FunctionKeyboard(

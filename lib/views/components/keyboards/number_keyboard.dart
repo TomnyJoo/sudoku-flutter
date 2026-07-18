@@ -6,11 +6,13 @@ class NumberKeyboard extends StatefulWidget {
     required this.onNumberSelected,
     required this.buttonSize,
     this.getNumberCount,
+    this.isEnabled = true,
     super.key,
   });
   final Function(int?) onNumberSelected;
   final double buttonSize;
   final int? Function(BuildContext, int)? getNumberCount;
+  final bool isEnabled;
 
   @override
   State<NumberKeyboard> createState() => _NumberKeyboardState();
@@ -54,30 +56,39 @@ class _NumberKeyboardState extends State<NumberKeyboard> {
   Widget _buildButton(final int number, final String label, final double buttonSize) {
     final fontSize = buttonSize * AppConstants.keyboardFontScale;
     final count = widget.getNumberCount?.call(context, number);
+    final isEnabled = widget.isEnabled;
 
     return SizedBox(
       width: buttonSize,
       height: buttonSize,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [context.primaryColor.withAlpha(AppConstants.gradientAlpha), context.secondaryColor.withAlpha(AppConstants.gradientAlpha)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: isEnabled
+              ? LinearGradient(
+                  colors: [context.primaryColor.withAlpha(AppConstants.gradientAlpha), context.secondaryColor.withAlpha(AppConstants.gradientAlpha)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [Colors.grey.withAlpha(AppConstants.gradientAlpha), Colors.grey.shade300.withAlpha(AppConstants.gradientAlpha)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(AppConstants.shadowLightAlpha),
-              blurRadius: AppConstants.spacingSmall,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: isEnabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(AppConstants.shadowLightAlpha),
+                    blurRadius: AppConstants.spacingSmall,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
-            foregroundColor: context.primaryColor,
+            foregroundColor: isEnabled ? context.primaryColor : Colors.grey.shade400,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
             ),
@@ -86,7 +97,7 @@ class _NumberKeyboardState extends State<NumberKeyboard> {
             elevation: 0,
             shadowColor: Colors.transparent,
           ),
-          onPressed: () => widget.onNumberSelected(number),
+          onPressed: isEnabled ? () => widget.onNumberSelected(number) : null,
           child: Stack(
             children: [
               Center(

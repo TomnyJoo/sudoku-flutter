@@ -2,7 +2,7 @@
 name: sudoku  #应用程序的名称
 description: "数独"  #应用程序的描述
 publish_to: 'none'  # 以下行防止将包意外发布到 pub.dev，建议私有包保留此设置，如果希望发布到 pub.dev 请移除本行
-version: 5.0.0+20260513 #应用程序的版本号和构建号，版本号格式为三个用点分隔的数字，如 1.2.43，后面可以跟一个用+号分隔的可选构建号
+version: 5.0.1+20260718 #应用程序的版本号和构建号，版本号格式为三个用点分隔的数字，如 1.2.43，后面可以跟一个用+号分隔的可选构建号
 
 # 应用程序名称
 flutter_app_name:
@@ -25,13 +25,12 @@ dependencies:
   cupertino_icons: ^1.0.9 # Cupertino 图标字体，用于 iOS 风格图标，与 CupertinoIcons 类配合使用
   provider: ^6.1.5+1  # 状态管理库，用于在应用程序中共享和管理状态
   shared_preferences: ^2.5.5 # 用于在应用程序中存储和检索简单键值对数据
-  path_provider: ^2.1.5  # 用于在应用程序中获取常用路径，如文档目录、缓存目录等
-  flutter_svg: ^2.2.4  # 用于加载和显示 SVG 图片
+  path_provider: ^2.1.6  # 用于在应用程序中获取常用路径，如文档目录、缓存目录等
+  flutter_svg: ^2.3.0  # 用于加载和显示 SVG 图片
   logger: ^2.7.0  # 日志库，用于记录应用程序运行时的信息、错误和调试消息
   collection: ^1.18.0  # 集合操作库，提供了一组用于操作集合的扩展方法和函数
   vector_math: ^2.2.0  # 向量数学库，用于处理 2D 和 3D 向量运算
-  # 音频
-  audioplayers: ^6.6.0
+  audioplayers: ^6.7.1  # 音频播放库，用于在应用程序中播放音频文件
   # 用于获取应用版本信息
   package_info_plus: ^9.0.1  # 应用程序版本信息库，用于获取应用程序的版本信息，如版本号、构建号等
   meta: ^1.17.0  # 元数据库，用于在应用程序中添加元数据，如版本号、作者、描述等
@@ -46,7 +45,7 @@ dev_dependencies:
   fake_async: ^1.0.0
   flutter_lints: ^6.0.0       # 代码规范检查（开发依赖）
   flutter_launcher_icons: ^0.14.4  # 应用图标生成工具
-  test: ^1.30.0
+  test: ^1.30.0  # 测试框架（开发依赖）
 
 # Flutter专用配置
 flutter:

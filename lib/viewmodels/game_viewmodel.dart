@@ -323,9 +323,18 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 保存游戏状态（同步）
   void saveGameSync() => saveGameFireAndForget();
 
+  /// 保存游戏状态（同步阻塞，等待保存完成）
+  Future<void> saveGameBlocking() => saveGameSyncBlocking();
+
   /// 加载游戏状态
   Future<void> loadGame() async {
     await loadGameInternal();
+    
+    if (isSamuraiGame) {
+      _currentSubGridIndex = 4;
+      _isOverviewMode = false;
+    }
+    
     await loadBestScore();
   }
 

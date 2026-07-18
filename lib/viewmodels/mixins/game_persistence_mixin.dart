@@ -6,6 +6,7 @@ mixin GamePersistenceMixin<B extends Board, T extends GameState<B>> on ChangeNot
   GameState<B> get gameState;
   set gameState(GameState<B> value);
   GameService<B> get gameService;
+  GameTimer get gameTimer;
   
   Timer? saveDebounceTimer;
   
@@ -42,6 +43,21 @@ mixin GamePersistenceMixin<B extends Board, T extends GameState<B>> on ChangeNot
     }
   }
   
+  Future<void> saveGameSyncBlocking() async {
+    try {
+      if (gameState.isCompleted) return;
+      if (gameState.startTime == null) return;
+      
+      saveDebounceTimer?.cancel();
+      
+      if (_isValidGameState(gameState)) {
+        await gameService.saveGameState(gameState);
+      }
+    } catch (e) {
+      _handleError('保存游戏失败', e);
+    }
+  }
+  
   Future<void> loadGameInternal() async {
     try {
       final saveKey = '${gameService.gameType}_current';
@@ -51,6 +67,9 @@ mixin GamePersistenceMixin<B extends Board, T extends GameState<B>> on ChangeNot
           !savedState.isCompleted &&
           savedState.startTime != null) {
         gameState = savedState;
+        gameTimer
+          ..setElapsedTime(savedState.elapsedTime)
+          ..start();
         notifyListeners();
       }
     } on RangeError catch (e) {
@@ -69,5 +88,6 @@ mixin GamePersistenceMixin<B extends Board, T extends GameState<B>> on ChangeNot
   
   void disposeSaveTimer() {
     saveDebounceTimer?.cancel();
+    saveDebounceTimer = null;
   }
 }
