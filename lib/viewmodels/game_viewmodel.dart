@@ -161,6 +161,12 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 切换子网格
   Future<void> switchSubGrid(int index) async {
     _currentSubGridIndex = index;
+    
+    if (isPlaying) {
+      final newBoard = gameState.board.selectCell(-1, -1);
+      gameState = gameService.updateBoard(gameState, newBoard as B);
+    }
+    
     notifyListeners();
 
     // 如果处于自动候选模式且游戏正在进行中，重新计算候选数
@@ -480,9 +486,17 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 撤销
   void undo() {
     if (!isPlaying) return;
+    
+    autoMarkDebounceTimer?.cancel();
+    
     gameState = gameService.undo(gameState);
+    
     if (gameState.isAutoMarkMode) {
-      autoMarkCandidates();
+      if (isSamuraiGame) {
+        autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
+      } else {
+        autoMarkCandidates();
+      }
     }
     notifyListeners();
   }
@@ -490,9 +504,17 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 重做
   void redo() {
     if (!isPlaying) return;
+    
+    autoMarkDebounceTimer?.cancel();
+    
     gameState = gameService.redo(gameState);
+    
     if (gameState.isAutoMarkMode) {
-      autoMarkCandidates();
+      if (isSamuraiGame) {
+        autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
+      } else {
+        autoMarkCandidates();
+      }
     }
     notifyListeners();
   }

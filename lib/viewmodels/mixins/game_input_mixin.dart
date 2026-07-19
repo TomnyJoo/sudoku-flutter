@@ -17,6 +17,12 @@ mixin GameInputMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
   /// 处理单元格选择
   void handleCellSelection(final int row, final int col) {
     if (!isPlaying) return;
+    
+    if (gameState.board is SamuraiBoard) {
+      final samuraiBoard = gameState.board as SamuraiBoard;
+      if (!samuraiBoard.isPlayableCell(row, col)) return;
+    }
+    
     final newBoard = gameState.board.selectCell(row, col);
     gameState = gameService.updateBoard(gameState, newBoard as B);
   }
