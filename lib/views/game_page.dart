@@ -45,7 +45,8 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appSettings = context.read<AppSettings>();
       final audioManager = AudioManager()
-        ..setMusicEnabled(appSettings.musicEnabled);
+        ..setMusicEnabled(appSettings.musicEnabled)
+        ..soundEffectEnabled = appSettings.soundEffectsEnabled;
       if (appSettings.musicEnabled && !audioManager.isMusicPlaying) {
         audioManager.playMusic();
       }

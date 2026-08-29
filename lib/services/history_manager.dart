@@ -24,7 +24,7 @@ class HistoryManager {
   final List<BoardCommand> _commands;
   final int _currentIndex;
 
-  static const int defaultMaxSize = 50;
+  static const int defaultMaxSize = 200;
   int maxSize = defaultMaxSize;
 
   /// 添加命令（截断后续命令）
@@ -37,12 +37,10 @@ class HistoryManager {
       final excessCount = newCommands.length - maxSize;
       var newInitialBoard = initialBoard;
       
-      // 重放被删除的命令到初始棋盘，使initialBoard更新为删除这些命令后的状态
       for (int i = 0; i < excessCount; i++) {
         newInitialBoard = newCommands[i].execute(newInitialBoard);
       }
       
-      // 从头部删除多余的命令
       final trimmedCommands = newCommands.sublist(excessCount);
       final trimmedIndex = newIndex - excessCount;
       
@@ -76,13 +74,13 @@ class HistoryManager {
     );
   }
 
-  /// 重放命令到指定索引
-  Board _replay(int upToIndex) {
-    var board = initialBoard;
+  Board _replay(int upToIndex, [Board? board, List<BoardCommand>? commands]) {
+    var targetBoard = board ?? initialBoard;
+    final targetCommands = commands ?? _commands;
     for (int i = 0; i <= upToIndex; i++) {
-      board = _commands[i].execute(board);
+      targetBoard = targetCommands[i].execute(targetBoard);
     }
-    return board;
+    return targetBoard;
   }
 
   bool canUndo() => _currentIndex >= 0;

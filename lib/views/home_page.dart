@@ -43,7 +43,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final appSettings = context.read<AppSettings>();
       await appSettings.loadSettings();
       final audioManager = AudioManager()
-        ..setMusicEnabled(appSettings.musicEnabled);
+        ..setMusicEnabled(appSettings.musicEnabled)
+        ..soundEffectEnabled = appSettings.soundEffectsEnabled;
       if (appSettings.musicEnabled) {
         await audioManager.playMusic();
       }

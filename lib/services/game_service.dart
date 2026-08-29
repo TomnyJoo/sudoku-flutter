@@ -188,6 +188,11 @@ class GameService<B extends Board> {
       }
     }
 
+    // 存在错误单元格时不能判定完成
+    if (hasErrors(state)) {
+      return false;
+    }
+
     return state.board.isComplete();
   }
 
@@ -515,6 +520,7 @@ class GameService<B extends Board> {
     final currentCell = gameState.board.getCell(row, col);
     if (currentCell.isFixed) return gameState;
 
+    bool isError = false;
     BoardCommand command;
     if (isMarkMode) {
       // 标记模式：切换候选数
@@ -522,7 +528,6 @@ class GameService<B extends Board> {
       command = ToggleCandidateCommand(row: row, col: col, candidate: value);
     } else {
       // 普通模式：设置值（含错误标记）
-      bool isError = false;
       if (value != null) {
         final tempBoard = gameState.board.setCellValue(row, col, null) as B;
         isError = !_validator.isValidMove(tempBoard, row, col, value);
@@ -532,6 +537,11 @@ class GameService<B extends Board> {
 
     // 使用命令模式更新状态
     var newState = updateBoardWithCommand(gameState, command);
+
+    // 记录错误次数（普通模式填入错误值时）
+    if (!isMarkMode && value != null && isError) {
+      newState = recordMistake(newState);
+    }
 
     // 检查游戏是否完成（只在普通模式且游戏未完成时检查）
     if (!isMarkMode && !newState.isCompleted) {

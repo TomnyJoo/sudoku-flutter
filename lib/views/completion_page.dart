@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
+import 'package:sudoku/main.dart' show GameRouteArgs;
 
 /// 通用完成页面（重构版）
 class FinishScreen<
@@ -745,10 +746,14 @@ class _FinishScreenState<
       return;
     }
     final viewModel = _viewModel();
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+    final navigator = Navigator.of(context);
+    // 显示加载对话框（不能 await，否则对话框永远无法关闭导致死锁）
+    unawaited(
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      ),
     );
     try {
       await _gameService().clearSavedGame('${widget.gameType}${AppConstants.currentGameKeySuffix}');
@@ -756,12 +761,23 @@ class _FinishScreenState<
         DifficultyExtension.fromIdentifier(_currentDifficulty),
       );
       if (mounted) {
-        Navigator.of(context).pop();
-        await Navigator.of(context).pushReplacementNamed(GameFactory.getGameRoute(GameType.values.firstWhere((g) => g.toString().split('.').last == widget.gameType)));
+        // 关闭加载对话框
+        navigator.pop();
+        // 清空路由栈（保留主页）并携带新游戏状态进入游戏页面，
+        // 避免新页面因无参数且无存档而显示空白棋盘
+        final gameType = GameType.values.firstWhere((g) => g.toString().split('.').last == widget.gameType);
+        await navigator.pushNamedAndRemoveUntil(
+          GameFactory.getGameRoute(gameType),
+          (route) => route.isFirst,
+          arguments: GameRouteArgs(
+            gameType: gameType,
+            initialState: viewModel.state,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop();
+        navigator.pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

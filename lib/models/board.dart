@@ -47,7 +47,6 @@ abstract class Board {
           .toList();
     }).toList();
 
-  /// 从JSON创建区域列表
   static List<Region> regionsFromJson(List<dynamic>? regionsJson) {
     if (regionsJson != null && regionsJson.isNotEmpty) {
       return regionsJson
@@ -56,6 +55,19 @@ abstract class Board {
     }
     return [];
   }
+
+  static List<Region> syncRegionCells(List<Region> regions, List<List<Cell>> cells) => 
+    regions.map((region) {
+      final newRegionCells = region.cells
+          .map((cell) => cells[cell.row][cell.col])
+          .toList();
+      return Region(
+        id: region.id,
+        type: region.type,
+        name: region.name,
+        cells: newRegionCells,
+      );
+    }).toList();
 
   /// 创建空的单元格矩阵
   static List<List<Cell>> createEmptyCells(int size) => 
@@ -121,6 +133,7 @@ abstract class Board {
   /// 切换单元格候选数字
   Board toggleCellCandidate(final int row, final int col, final int number) {
     final cell = getCell(row, col);
+    if (!cell.isEditable) return this;
     final newCell = cell.toggleCandidate(number);
     return _updateCell(row, col, newCell);
   }
@@ -250,19 +263,14 @@ abstract class Board {
 
   /// =========== 私有方法 ===========
 
-  /// 更新单元格
   Board _updateCell(final int row, final int col, final Cell newCell) {
     final newCells = cells.map(List<Cell>.from).toList();
     newCells[row][col] = newCell;
 
-    // 同步更新 regions 中的 cells
     final newRegions = regions.map((region) {
-      final newRegionCells = region.cells.map((cell) {
-        if (cell.row == row && cell.col == col) {
-          return newCell;
-        }
-        return cell;
-      }).toList();
+      final newRegionCells = region.cells
+          .map((cell) => cell.row == row && cell.col == col ? newCell : newCells[cell.row][cell.col])
+          .toList();
       return Region(
         id: region.id,
         type: region.type,
@@ -404,15 +412,33 @@ abstract class Board {
     'regions': regions.map((region) => region.toJson()).toList(),
   };
 
-  /// 创建棋盘的副本，支持选择性更新
   Board copyWith({final List<List<Cell>>? cells, final List<Region>? regions}) {
-    // 创建cells的深拷贝，避免引用问题
     final cellsCopy =
         cells ??
         this.cells
             .map((row) => row.map((cell) => cell.copyWith()).toList())
             .toList();
-    return createInstance(cellsCopy, regions: regions ?? this.regions);
+
+    List<Region> updatedRegions;
+    if (regions != null) {
+      updatedRegions = regions;
+    } else if (cells != null) {
+      updatedRegions = this.regions.map((region) {
+        final newRegionCells = region.cells
+            .map((cell) => cellsCopy[cell.row][cell.col])
+            .toList();
+        return Region(
+          id: region.id,
+          type: region.type,
+          name: region.name,
+          cells: newRegionCells,
+        );
+      }).toList();
+    } else {
+      updatedRegions = this.regions;
+    }
+
+    return createInstance(cellsCopy, regions: updatedRegions);
   }
 
   /// 创建新棋盘实例（子类需要实现）
@@ -531,6 +557,8 @@ class StandardBoard extends Board {
     if (regions.isEmpty) {
       final tempBoard = StandardBoard(size: size, cells: cells);
       regions = tempBoard.createRegions();
+    } else {
+      regions = Board.syncRegionCells(regions, cells);
     }
 
     return StandardBoard(size: size, cells: cells, regions: regions);
@@ -581,16 +609,16 @@ class DiagonalBoard extends Board {
     final cells = Board.cellsFromJson(cellsJson);
 
     final regionsJson = json['regions'] as List?;
-    final regions = Board.regionsFromJson(regionsJson);
+    var regions = Board.regionsFromJson(regionsJson);
 
-    final board = DiagonalBoard(size: size, cells: cells, regions: regions);
-    // 如果没有区域信息，生成区域
     if (regions.isEmpty) {
-      final generatedRegions = board.createRegions();
-      return DiagonalBoard(size: size, cells: cells, regions: generatedRegions);
+      final board = DiagonalBoard(size: size, cells: cells, regions: regions);
+      regions = board.createRegions();
+      return DiagonalBoard(size: size, cells: cells, regions: regions);
     }
 
-    return board;
+    regions = Board.syncRegionCells(regions, cells);
+    return DiagonalBoard(size: size, cells: cells, regions: regions);
   }
 
   @override
@@ -680,6 +708,8 @@ class WindowBoard extends Board {
     if (regions.isEmpty) {
       final tempBoard = WindowBoard(size: size, cells: cells);
       regions = tempBoard.createRegions();
+    } else {
+      regions = Board.syncRegionCells(regions, cells);
     }
 
     return WindowBoard(size: size, cells: cells, regions: regions);
@@ -813,6 +843,7 @@ class JigsawBoard extends Board {
             (regionJson) => Region.fromJson(regionJson as Map<String, dynamic>),
           )
           .toList();
+      regions = Board.syncRegionCells(regions, cells);
     } else {
       final tempBoard = JigsawBoard(
         size: size,
@@ -982,6 +1013,7 @@ class KillerBoard extends Board {
             (regionJson) => Region.fromJson(regionJson as Map<String, dynamic>),
           )
           .toList();
+      regions = Board.syncRegionCells(regions, cells);
     }
 
     final cagesJson = json['cages'] as List?;
@@ -991,14 +1023,13 @@ class KillerBoard extends Board {
         )
         .toList() ?? [];
 
-    final board = KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
-    // 如果没有区域信息，生成区域
     if (regions == null || regions.isEmpty) {
-      final generatedRegions = board.createRegions();
-      return KillerBoard(size: size, cells: cells, regions: generatedRegions, cages: cages);
+      final board = KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
+      regions = board.createRegions();
+      return KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
     }
 
-    return board;
+    return KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
   }
   final List<KillerCage> cages;
   
@@ -1204,10 +1235,21 @@ class SamuraiBoard extends Board {
 
     final regionsJson = json['regions'] as List?;
     if (regionsJson != null && regionsJson.isNotEmpty) {
-      final regions = regionsJson.map((r) => Region.fromJson(r)).toList();
+      final regions = regionsJson.map((regionJson) {
+        final region = Region.fromJson(regionJson);
+        final newRegionCells = region.cells
+            .map((cell) => cells[cell.row][cell.col])
+            .toList();
+        return Region(
+          id: region.id,
+          type: region.type,
+          name: region.name,
+          cells: newRegionCells,
+        );
+      }).toList();
       return SamuraiBoard(cells: cells, regions: regions);
     }
-    return SamuraiBoard(cells: cells); // 自动生成 regions
+    return SamuraiBoard(cells: cells);
   }
 
   SamuraiBoard._internal({

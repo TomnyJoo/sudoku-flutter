@@ -31,7 +31,12 @@ class StatisticsExportImport {
       await file.writeAsString(jsonString);
       
       // 分享文件
-      await Share.shareXFiles([XFile(file.path)], text: '数独游戏统计数据');
+      await SharePlus.instance.share(
+        ShareParams(
+          text: '数独游戏统计数据',
+          files: [XFile(file.path)],
+        ),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
