@@ -131,12 +131,15 @@ class PuzzleGenerator {
         size: size,
         onStageUpdate: onStageUpdate,
         templateData: templateData,
+        isCancelled: isCancelled,
       );
 
       // 通知生成完成
       onStageUpdate?.call(GenerationStage.completed);
 
       return result;
+    } on GameGenerationCancelledException {
+      rethrow;
     } catch (e) {
       // 如果 Isolate 执行失败，回退到主线程
       AppLogger.warning('Isolate 生成失败，回退到主线程生成: $e');

@@ -1,6 +1,6 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sudoku/constants/app_constants.dart';
+import 'package:sudoku/renderers/layout_strategy.dart';
 
 class GameLayout {
   GameLayout({
@@ -52,114 +52,32 @@ class LayoutCalculator {
   /// 键盘底部外边距
   static const double keypadBottomMargin = AppConstants.keypadBottomMargin;
 
+  /// 键盘水平外边距（避开 Android 屏幕左右边缘返回手势区）
+  static const double keypadHorizontalMargin = AppConstants.keypadHorizontalMargin;
+
   static GameLayout calculateOptimalLayout(
     final Size gameAreaSize, {
     int boardSize = 9,
   }) {
-    final gameAreaWidth = gameAreaSize.width;
-    final gameAreaHeight = gameAreaSize.height;
-
-    final isHorizontalLayout = gameAreaWidth >= gameAreaHeight;
-
-    GameLayout layout;
-    if (isHorizontalLayout) {
-      layout = _calculateHorizontalLayout(gameAreaWidth, gameAreaHeight, boardSize);
-    } else {
-      layout = _calculateVerticalLayout(gameAreaWidth, gameAreaHeight, boardSize);
-    }
-
-    return layout;
+    final strategy = gameAreaSize.width >= gameAreaSize.height
+        ? const HorizontalLayoutStrategy()
+        : const VerticalLayoutStrategy();
+    return strategy.calculate(gameAreaSize, boardSize: boardSize);
   }
 
-  static GameLayout _calculateVerticalLayout(final double width, final double height, final int boardSize) {
-    var boardPixelSize = (height - spacing - keypadBottomMargin) / 1.5;
-    
-    if (boardPixelSize > width) {
-      boardPixelSize = width;
-    }
-    
-    if (boardPixelSize / boardSize < minBoardCellSize) {
-      boardPixelSize = minBoardCellSize * boardSize;
-    }
+  static GameLayout _calculateVerticalLayout(final double width, final double height, final int boardSize) =>
+      const VerticalLayoutStrategy().calculate(Size(width, height), boardSize: boardSize);
 
-    final keypadWidth = boardPixelSize;
-    final keypadHeight = boardPixelSize * 0.5;
+  static GameLayout _calculateHorizontalLayout(final double width, final double height, final int boardSize) =>
+      const HorizontalLayoutStrategy().calculate(Size(width, height), boardSize: boardSize);
 
-    final boardCellSize = boardPixelSize / boardSize;
+  /// 按指定尺寸强制计算左右布局（用于与实际可用区域保持方向一致）
+  static GameLayout calculateHorizontalLayout(final Size availableSize, {final int boardSize = 9}) =>
+    _calculateHorizontalLayout(availableSize.width, availableSize.height, boardSize);
 
-    final eachKeypadWidth = keypadWidth / 2;
-    final eachKeypadHeight = keypadHeight;
-    
-    final keypadCellSizeByWidth = (eachKeypadWidth - keypadContainerPadding * 2 - keypadGridSpacing * 2) / 3;
-    final keypadCellSizeByHeight = (eachKeypadHeight - keypadContainerPadding * 2 - keypadGridSpacing * 2) / 3;
-    
-    double keypadCellSize = min(keypadCellSizeByWidth, keypadCellSizeByHeight);
-    
-    if (keypadCellSize < minKeypadCellSize) {
-      keypadCellSize = minKeypadCellSize;
-    }
-
-    final totalHeight = boardPixelSize + spacing + keypadHeight + keypadBottomMargin;
-    final totalWidth = boardPixelSize;
-    final utilizationRatio = (boardPixelSize * boardPixelSize + keypadWidth * keypadHeight) / (width * height);
-
-    return GameLayout(
-      boardCellSize: boardCellSize,
-      keypadCellSize: keypadCellSize,
-      isHorizontalLayout: false,
-      boardSize: boardPixelSize,
-      keypadWidth: keypadWidth,
-      keypadHeight: keypadHeight,
-      totalWidth: totalWidth,
-      totalHeight: totalHeight,
-      utilizationRatio: utilizationRatio,
-    );
-  }
-
-  static GameLayout _calculateHorizontalLayout(final double width, final double height, final int boardSize) {
-    var boardPixelSize = (width - spacing) / 1.5;
-    
-    if (boardPixelSize > height) {
-      boardPixelSize = height;
-    }
-    
-    if (boardPixelSize / boardSize < minBoardCellSize) {
-      boardPixelSize = minBoardCellSize * boardSize;
-    }
-
-    final keypadHeight = boardPixelSize;
-    final keypadWidth = boardPixelSize * 0.5;
-
-    final boardCellSize = boardPixelSize / boardSize;
-
-    final eachKeypadWidth = keypadWidth;
-    final eachKeypadHeight = keypadHeight / 2;
-    
-    final keypadCellSizeByWidth = (eachKeypadWidth - keypadContainerPadding * 2 - keypadGridSpacing * 2) / 3;
-    final keypadCellSizeByHeight = (eachKeypadHeight - keypadContainerPadding * 2 - keypadGridSpacing * 2) / 3;
-    
-    double keypadCellSize = min(keypadCellSizeByWidth, keypadCellSizeByHeight);
-    
-    if (keypadCellSize < minKeypadCellSize) {
-      keypadCellSize = minKeypadCellSize;
-    }
-
-    final totalWidth = boardPixelSize + spacing + keypadWidth;
-    final totalHeight = boardPixelSize;
-    final utilizationRatio = (boardPixelSize * boardPixelSize + keypadWidth * keypadHeight) / (width * height);
-
-    return GameLayout(
-      boardCellSize: boardCellSize,
-      keypadCellSize: keypadCellSize,
-      isHorizontalLayout: true,
-      boardSize: boardPixelSize,
-      keypadWidth: keypadWidth,
-      keypadHeight: keypadHeight,
-      totalWidth: totalWidth,
-      totalHeight: totalHeight,
-      utilizationRatio: utilizationRatio,
-    );
-  }
+  /// 按指定尺寸强制计算上下布局（用于与实际可用区域保持方向一致）
+  static GameLayout calculateVerticalLayout(final Size availableSize, {final int boardSize = 9}) =>
+    _calculateVerticalLayout(availableSize.width, availableSize.height, boardSize);
 
   static GameLayout calculateStandardLayout(final Size availableSize) =>
     calculateOptimalLayout(availableSize);

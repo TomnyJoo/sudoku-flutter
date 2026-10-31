@@ -43,9 +43,10 @@ class AppInitializer {
       stopwatch.stop();
       // 初始化成功
       return true;
-    } catch (e) {
+    } catch (error, stackTrace) {
       // 初始化失败
       _status = InitializationStatus.failed;
+      AppLogger.error('应用初始化失败', error, stackTrace);
       return false;
     }
   }

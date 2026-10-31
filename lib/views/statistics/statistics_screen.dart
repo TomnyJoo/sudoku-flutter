@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
 
 /// Summary：游戏统计页面
-class GameStatisticsScreen extends StatefulWidget {
-  const GameStatisticsScreen({super.key});
+class StatisticsScreen extends StatefulWidget {
+  const StatisticsScreen({super.key});
 
   @override
-  State<GameStatisticsScreen> createState() => _GameStatisticsScreenState();
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
 /// Summary：游戏统计页面状态管理
-class _GameStatisticsScreenState extends State<GameStatisticsScreen>
+class _StatisticsScreenState extends State<StatisticsScreen>
     with SingleTickerProviderStateMixin {
   Map<String, Statistics> _allStatistics = {};
   bool _isLoading = true;

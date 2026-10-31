@@ -5,13 +5,13 @@ import 'package:sudoku/index.dart';
 import 'package:sudoku/main.dart' show GameRouteArgs;
 
 /// 通用完成页面（重构版）
-class FinishScreen<
+class CompletionScreen<
   T extends GameViewModel<B>,
   S extends GameService<B>,
   B extends Board
 >
     extends StatefulWidget {
-  const FinishScreen({
+  const CompletionScreen({
     super.key,
     required this.gameType,
     required this.getViewModel,
@@ -29,15 +29,15 @@ class FinishScreen<
   final void Function(BuildContext context)? onBackToMenu;  /// 自定义返回菜单行为（可选）
 
   @override
-  State<FinishScreen<T, S, B>> createState() => _FinishScreenState<T, S, B>();
+  State<CompletionScreen<T, S, B>> createState() => _CompletionScreenState<T, S, B>();
 }
 
-class _FinishScreenState<
+class _CompletionScreenState<
   T extends GameViewModel<B>,
   S extends GameService<B>,
   B extends Board
 >
-    extends State<FinishScreen<T, S, B>>
+    extends State<CompletionScreen<T, S, B>>
     with TickerProviderStateMixin {
   late final AnimationController _scaleController;
   late final Animation<double> _scaleAnimation;

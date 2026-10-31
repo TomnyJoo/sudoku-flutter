@@ -300,6 +300,8 @@ class AppLocalizations {
       'Master difficulty, only true Sudoku masters can complete';
   String get difficultyDescCustom =>
       getString('difficultyDescCustom') ?? 'Custom difficulty';
+  String get failedToLoadSavedGames =>
+      getString('failedToLoadSavedGames') ?? 'Failed to load saved games';
   String get failedToLoadStats =>
       getString('failedToLoadStats') ?? 'Failed to load statistics';
   String get failedToAddGameRecord =>

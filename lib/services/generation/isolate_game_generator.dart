@@ -17,6 +17,7 @@ class IsolateGameGenerator {
   Completer<GenerationResult>? _completer;
   Function(GenerationStage)? _onStageUpdate;
   Completer<void>? _readyCompleter;
+  Timer? _cancellationTimer;
 
   /// 生成游戏
   Future<GenerationResult> generate({
@@ -25,35 +26,59 @@ class IsolateGameGenerator {
     required int size,
     Function(GenerationStage)? onStageUpdate,
     Map<String, dynamic>? templateData,
+    bool Function()? isCancelled,
   }) async {
+    if (isCancelled?.call() ?? false) {
+      throw GameGenerationCancelledException();
+    }
+
     _onStageUpdate = onStageUpdate;
     _completer = Completer<GenerationResult>();
     _readyCompleter = Completer<void>();
+    final generationCompleter = _completer!;
 
-    // 创建主线程的 ReceivePort
-    _mainReceivePort = ReceivePort();
+    try {
+      // 创建主线程的 ReceivePort
+      _mainReceivePort = ReceivePort();
 
-    // 启动 Isolate，传入主线程的 SendPort
-    _isolate = await Isolate.spawn(
-      _isolateEntryPoint,
-      _mainReceivePort!.sendPort,
-    );
+      // 启动 Isolate，传入主线程的 SendPort
+      _isolate = await Isolate.spawn(
+        _isolateEntryPoint,
+        _mainReceivePort!.sendPort,
+      );
 
-    // 监听来自 Isolate 的消息（统一处理所有消息）
-    _mainReceivePort!.listen(_handleMessage);
+      // 监听来自 Isolate 的消息（统一处理所有消息）
+      _mainReceivePort!.listen(_handleMessage);
 
-    // 等待 Isolate 准备就绪
-    await _readyCompleter!.future;
+      // 等待 Isolate 准备就绪
+      await _readyCompleter!.future;
+      if (isCancelled?.call() ?? false) {
+        cancel();
+        return await generationCompleter.future;
+      }
 
-    // 发送生成请求
-    _isolateSendPort?.send(GenerationRequest(
-      gameType: gameType.name,
-      difficulty: difficulty.name,
-      size: size,
-      templateData: templateData,
-    ));
+      // 发送生成请求
+      _isolateSendPort?.send(GenerationRequest(
+        gameType: gameType.name,
+        difficulty: difficulty.name,
+        size: size,
+        templateData: templateData,
+      ));
 
-    return _completer!.future;
+      if (isCancelled != null) {
+        _cancellationTimer = Timer.periodic(
+          const Duration(milliseconds: 100),
+          (_) {
+            if (isCancelled()) cancel();
+          },
+        );
+      }
+
+      return await generationCompleter.future;
+    } catch (_) {
+      _cleanup();
+      rethrow;
+    }
   }
 
   /// 处理来自 Isolate 的消息
@@ -78,12 +103,17 @@ class IsolateGameGenerator {
   /// 取消游戏生成
   void cancel() {
     _isolate?.kill(priority: Isolate.immediate);
-    _completer?.completeError(GameGenerationCancelledException());
+    final completer = _completer;
+    if (completer != null && !completer.isCompleted) {
+      completer.completeError(GameGenerationCancelledException());
+    }
     _cleanup();
   }
 
   /// 清理资源
   void _cleanup() {
+    _cancellationTimer?.cancel();
+    _cancellationTimer = null;
     _mainReceivePort?.close();
     _isolate = null;
     _isolateSendPort = null;
@@ -126,7 +156,7 @@ class IsolateGameGenerator {
         gameType: gameType,
         difficulty: difficulty,
         size: request.size,
-        isCancelled: () => false, // Isolate 内部不需要取消检查
+        isCancelled: () => false, // 主线程通过 Isolate.kill 取消生成任务
         onStageUpdate: (stage) {
           mainSendPort.send(GenerationProgress(stage.name));
         },

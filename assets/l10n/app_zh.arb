@@ -450,6 +450,9 @@
   "@difficultyDescCustom": {
     "description": "difficultyDescCustom"
   },
+  "@failedToLoadSavedGames": {
+    "description": "failedToLoadSavedGames"
+  },
   "@failedToLoadStats": {
     "description": "failedToLoadStats"
   },
@@ -643,6 +646,7 @@
   "difficultyDescExpert": "专家难度，挑战你的极限",
   "difficultyDescMaster": "大师难度，只有真正的数独高手才能完成",
   "difficultyDescCustom": "自定义难度",
+  "failedToLoadSavedGames": "加载保存的游戏失败",
   "failedToLoadStats": "加载统计数据失败",
   "failedToAddGameRecord": "添加游戏记录失败",
   "failedToClearStats": "清除统计数据失败",

@@ -55,18 +55,23 @@ class GameStorageService {
   static Future<GameState<B>?> loadGameState<B extends Board>(
     String saveKey,
     B Function(Map<String, dynamic>) boardFromJson,
-  ) async => ErrorHandler().handleAsync(() async {
+  ) async {
+    try {
+      return await ErrorHandler().handleAsync(() async {
         final prefs = await SharedPreferences.getInstance();
         final stateJson = prefs.getString(saveKey);
         if (stateJson == null) return null;
-        try {
-          final stateData = jsonDecode(stateJson);
-          return GameState.fromJson(stateData, boardFromJson);
-        } catch (e) {
-          AppLogger.error('反序列化游戏状态失败: $saveKey', e, StackTrace.current);
-          return null;
+        final decodedState = jsonDecode(stateJson);
+        if (decodedState is! Map<String, dynamic>) {
+          throw const FormatException('游戏存档根节点必须是 JSON 对象');
         }
+        return GameState.fromJson(decodedState, boardFromJson);
       }, operationName: '加载游戏状态');
+    } catch (error, stackTrace) {
+      AppLogger.error('加载游戏状态失败: $saveKey', error, stackTrace);
+      rethrow;
+    }
+  }
 
   /// 清除游戏状态
   static Future<void> clearGameState(String saveKey) async {
@@ -113,24 +118,33 @@ class GameStorageService {
           final stateJson = prefs.getString(key);
           if (stateJson != null) {
             try {
-              final stateData = jsonDecode(stateJson);
-              if (_isValidGameState(stateData)) {
-                savedGames.add(SavedGameInfo(
-                  gameType: gameType,
-                  saveKey: key,
-                  timestamp: stateData['startTime'] != null ? DateTime.parse(stateData['startTime'] as String) : DateTime.now(),
-                  difficulty: stateData['difficulty'] ?? 'unknown',
-                ));
+              final decodedState = jsonDecode(stateJson);
+              if (decodedState is! Map<String, dynamic>) {
+                throw const FormatException('游戏存档根节点必须是 JSON 对象');
               }
-            } catch (_) {}
+              final stateData = decodedState;
+              if (!_isValidGameState(stateData)) {
+                AppLogger.warning('忽略结构无效的游戏存档: $key');
+                continue;
+              }
+              savedGames.add(SavedGameInfo(
+                gameType: gameType,
+                saveKey: key,
+                timestamp: DateTime.parse(stateData['startTime'] as String),
+                difficulty: stateData['difficulty'] as String? ?? 'unknown',
+              ));
+            } catch (error, stackTrace) {
+              AppLogger.warning('忽略无效的游戏存档: $key', error, stackTrace);
+            }
           }
         }
       }
 
       savedGames.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return savedGames;
-    } catch (_) {
-      return [];
+    } catch (error, stackTrace) {
+      AppLogger.error('读取游戏存档列表失败', error, stackTrace);
+      rethrow;
     }
   }
 
@@ -150,7 +164,10 @@ class GameStorageService {
           await prefs.remove(key);
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error('清除所有游戏存档失败', error, stackTrace);
+      rethrow;
+    }
   }
 
   /// 检查游戏状态是否有效

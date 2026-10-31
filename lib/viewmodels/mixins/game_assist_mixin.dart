@@ -25,6 +25,11 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
         return;
       }
 
+      // 捕获当前棋盘快照，后续计算与更新均基于此快照。
+      // 若计算期间用户又输入了数字，gameState.board 会变化，
+      // 此时放弃本次更新，避免旧候选数覆盖用户的新输入。
+      final boardSnapshot = gameState.board;
+
       try {
         isCalculatingCandidates = true;
 
@@ -32,9 +37,9 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
           return;
         }
 
-        // 计算候选数
-        final calculator = CandidateCalculator(gameState.board);
-        final candidates = gameState.board is SamuraiBoard && visibleSubBoards != null
+        // 计算候选数（基于快照）
+        final calculator = CandidateCalculator(boardSnapshot);
+        final candidates = boardSnapshot is SamuraiBoard && visibleSubBoards != null
             ? calculator.computeSamuraiCandidates(
                 visibleSubBoards,
                 useAdvancedStrategies: useAdvancedStrategy,
@@ -44,10 +49,10 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
               );
 
         // 更新棋盘候选数
-        var newBoard = gameState.board;
+        var newBoard = boardSnapshot;
 
         // 如果是武士数独且有可见子棋盘，只更新可见子棋盘的候选数
-        if (gameState.board is SamuraiBoard && visibleSubBoards != null) {
+        if (boardSnapshot is SamuraiBoard && visibleSubBoards != null) {
           for (final subBoardIndex in visibleSubBoards) {
             final (startRow, startCol) = SamuraiBoard.subGridOffsets[subBoardIndex];
             for (int row = startRow; row < startRow + 9; row++) {
@@ -69,6 +74,11 @@ mixin GameAssistMixin<B extends Board, T extends GameState<B>> on ChangeNotifier
               }
             }
           }
+        }
+
+        // 若计算期间棋盘已被用户修改，放弃本次更新（新输入会再次触发 autoMark）
+        if (gameState.board != boardSnapshot) {
+          return;
         }
 
         gameState = gameService.updateBoard(gameState, newBoard);

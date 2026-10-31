@@ -58,6 +58,7 @@ mixin GameLifecycleMixin<B extends Board, T extends GameState<B>> on ChangeNotif
         generateNewGame(difficulty),
         loadBestScore(difficulty.name),
       ]);
+      if (isCancelled) return;
 
       gameState = gameState.copyWith(startTime: DateTime.now());
       gameTimer.start();
@@ -67,6 +68,9 @@ mixin GameLifecycleMixin<B extends Board, T extends GameState<B>> on ChangeNotif
         final audioManager = AudioManager();
         await audioManager.playStartSound();
       }
+    } on GameGenerationCancelledException {
+      if (!isCancelled) rethrow;
+      gameTimer.reset();
     } catch (e) {
       await resetGameState();
       gameTimer.reset();
@@ -79,7 +83,7 @@ mixin GameLifecycleMixin<B extends Board, T extends GameState<B>> on ChangeNotif
       rethrow;
     } finally {
       isLoading = false;
-      notifyListeners();
+      if (hasListeners) notifyListeners();
     }
   }
 

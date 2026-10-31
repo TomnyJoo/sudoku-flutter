@@ -32,9 +32,7 @@ void main() async {
 
       // 初始化成功，运行主应用
       // 使用 MultiProvider 提供应用所需的所有依赖
-      runApp(
-        MultiProvider(providers: DiModule.providers, child: const SudokuApp()),
-      );
+      runApp(_buildApplication());
     },
     // 处理异步错误
     (Object error, StackTrace stackTrace) {
@@ -48,9 +46,31 @@ void main() async {
   );
 }
 
+Widget _buildApplication() =>
+    MultiProvider(providers: DiModule.providers, child: const SudokuApp());
+
 /// Summary: 应用初始化失败时显示的错误页面
-class ErrorApp extends StatelessWidget {
+class ErrorApp extends StatefulWidget {
   const ErrorApp({super.key});
+
+  @override
+  State<ErrorApp> createState() => _ErrorAppState();
+}
+
+class _ErrorAppState extends State<ErrorApp> {
+  bool _isRetrying = false;
+
+  Future<void> _retryInitialization() async {
+    setState(() => _isRetrying = true);
+    final initialized = await AppInitializer.initialize();
+    if (!mounted) return;
+
+    if (initialized) {
+      runApp(_buildApplication());
+    } else {
+      setState(() => _isRetrying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -64,8 +84,14 @@ class ErrorApp extends StatelessWidget {
             const Text('应用初始化失败'),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => runApp(const SudokuApp()),
-              child: const Text('重试'),
+              onPressed: _isRetrying ? null : _retryInitialization,
+              child: _isRetrying
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('重试'),
             ),
           ],
         ),
@@ -118,16 +144,16 @@ class _SudokuAppState extends State<SudokuApp> {
           final args = ModalRoute.of(context)?.settings.arguments;
           // 通过路由参数传递 gameType
           if (args is GameRouteArgs) {
-            return _GameScreenWrapper(
+            return GameScreenFactory(
               gameType: args.gameType,
               initialState: args.initialState,
             );
           }
           // 兼容旧的直接传 Difficulty 的方式
           if (args is Difficulty) {
-            return const _GameScreenWrapper(gameType: GameType.standard);
+            return const GameScreenFactory(gameType: GameType.standard);
           }
-          return const _GameScreenWrapper(gameType: GameType.standard);
+          return const GameScreenFactory(gameType: GameType.standard);
         },
         '/standard_custom': (context) => ChangeNotifierProvider(
               create: (context) => GameViewModel<StandardBoard>(
@@ -135,11 +161,12 @@ class _SudokuAppState extends State<SudokuApp> {
                 boardFromJson: StandardBoard.fromJson,
                 createEmptyBoard: StandardBoard.empty,
                 settings: context.read<AppSettings>(),
+                validator: context.read<GameValidator>(),
               ),
               child: CustomGameScreen<StandardBoard, GameViewModel<StandardBoard>>(
                 initializeBoard: (board) {},
                 createBoard: (cells) => StandardBoard(size: StandardConstants.boardSize, cells: cells),
-                buildBoardWidget: (board, onCellSelected, cellSize) => UnifiedBoardWidget(
+                buildBoardWidget: (board, onCellSelected, cellSize) => NineByNineBoardWidget(
                   board: board,
                   onCellSelected: onCellSelected,
                   cellSize: cellSize,
@@ -149,7 +176,7 @@ class _SudokuAppState extends State<SudokuApp> {
                 boxSize: StandardConstants.boxSize,
                 maxSolutionsToCheck: StandardConstants.maxSolutionsToCheck,
                 getViewModel: (context) => context.read<GameViewModel<StandardBoard>>(),
-                getGameScreen: () => const _GameScreenWrapper(gameType: GameType.standard),
+                getGameScreen: () => const GameScreenFactory(gameType: GameType.standard),
                 isValidPlacementForSolver: (board, row, col, number) {
                   for (var i = 0; i < StandardConstants.boardSize; i++) {
                     if (board[row][i] == number || board[i][col] == number) return false;
@@ -171,11 +198,12 @@ class _SudokuAppState extends State<SudokuApp> {
                 boardFromJson: DiagonalBoard.fromJson,
                 createEmptyBoard: DiagonalBoard.empty,
                 settings: context.read<AppSettings>(),
+                validator: context.read<GameValidator>(),
               ),
               child: CustomGameScreen<DiagonalBoard, GameViewModel<DiagonalBoard>>(
                 initializeBoard: (board) {},
                 createBoard: (cells) => DiagonalBoard(size: DiagonalConstants.boardSize, cells: cells),
-                buildBoardWidget: (board, onCellSelected, cellSize) => UnifiedBoardWidget(
+                buildBoardWidget: (board, onCellSelected, cellSize) => NineByNineBoardWidget(
                   board: board,
                   onCellSelected: onCellSelected,
                   cellSize: cellSize,
@@ -185,7 +213,7 @@ class _SudokuAppState extends State<SudokuApp> {
                 boxSize: DiagonalConstants.boxSize,
                 maxSolutionsToCheck: DiagonalConstants.maxSolutionsToCheck,
                 getViewModel: (context) => context.read<GameViewModel<DiagonalBoard>>(),
-                getGameScreen: () => const _GameScreenWrapper(gameType: GameType.diagonal),
+                getGameScreen: () => const GameScreenFactory(gameType: GameType.diagonal),
                 isValidPlacementForSolver: (board, row, col, number) {
                   for (var i = 0; i < DiagonalConstants.boardSize; i++) {
                     if (board[row][i] == number || board[i][col] == number) return false;
@@ -217,11 +245,12 @@ class _SudokuAppState extends State<SudokuApp> {
                 boardFromJson: WindowBoard.fromJson,
                 createEmptyBoard: WindowBoard.empty,
                 settings: context.read<AppSettings>(),
+                validator: context.read<GameValidator>(),
               ),
               child: CustomGameScreen<WindowBoard, GameViewModel<WindowBoard>>(
                 initializeBoard: (board) {},
                 createBoard: (cells) => WindowBoard(size: WindowConstants.boardSize, cells: cells),
-                buildBoardWidget: (board, onCellSelected, cellSize) => UnifiedBoardWidget(
+                buildBoardWidget: (board, onCellSelected, cellSize) => NineByNineBoardWidget(
                   board: board,
                   onCellSelected: onCellSelected,
                   cellSize: cellSize,
@@ -231,7 +260,7 @@ class _SudokuAppState extends State<SudokuApp> {
                 boxSize: WindowConstants.boxSize,
                 maxSolutionsToCheck: WindowConstants.maxSolutionsToCheck,
                 getViewModel: (context) => context.read<GameViewModel<WindowBoard>>(),
-                getGameScreen: () => const _GameScreenWrapper(gameType: GameType.window),
+                getGameScreen: () => const GameScreenFactory(gameType: GameType.window),
                 isValidPlacementForSolver: (board, row, col, number) {
                   // 行列检查
                   for (var i = 0; i < WindowConstants.boardSize; i++) {
@@ -261,7 +290,7 @@ class _SudokuAppState extends State<SudokuApp> {
                 },
               ),
             ),
-        '/statistics': (context) => const GameStatisticsScreen(),
+        '/statistics': (context) => const StatisticsScreen(),
         '/settings': (context) => const SettingsScreenWrapper(),
       },
     );
@@ -279,97 +308,4 @@ class GameRouteArgs {
   final GameType gameType;
   final Difficulty? difficulty;
   final GameState? initialState;
-}
-
-/// 统一游戏屏幕包装器
-class _GameScreenWrapper extends StatelessWidget {
-  const _GameScreenWrapper({
-    required this.gameType,
-    this.initialState,
-  });
-
-  final GameType gameType;
-  final GameState? initialState;
-
-  @override
-  Widget build(BuildContext context) {
-    switch (gameType) {
-      case GameType.standard:
-        return ChangeNotifierProvider(
-          create: (context) => GameViewModel<StandardBoard>(
-            gameType: 'standard',
-            boardFromJson: StandardBoard.fromJson,
-            createEmptyBoard: StandardBoard.empty,
-            settings: context.read<AppSettings>(),
-          ),
-          child: const GameScreen<StandardBoard>(),
-        );
-      case GameType.diagonal:
-        return ChangeNotifierProvider(
-          create: (context) => GameViewModel<DiagonalBoard>(
-            gameType: 'diagonal',
-            boardFromJson: DiagonalBoard.fromJson,
-            createEmptyBoard: DiagonalBoard.empty,
-            settings: context.read<AppSettings>(),
-          ),
-          child: const GameScreen<DiagonalBoard>(),
-        );
-      case GameType.window:
-        return ChangeNotifierProvider(
-          create: (context) => GameViewModel<WindowBoard>(
-            gameType: 'window',
-            boardFromJson: WindowBoard.fromJson,
-            createEmptyBoard: WindowBoard.empty,
-            settings: context.read<AppSettings>(),
-          ),
-          child: const GameScreen<WindowBoard>(),
-        );
-      case GameType.jigsaw:
-        return ChangeNotifierProvider(
-          create: (context) => GameViewModel<JigsawBoard>(
-            gameType: 'jigsaw',
-            boardFromJson: JigsawBoard.fromJson,
-            createEmptyBoard: () => JigsawBoard.empty(regionMatrix: List.generate(9, (_) => List.filled(9, 0))),
-            settings: context.read<AppSettings>(),
-          ),
-          child: const GameScreen<JigsawBoard>(),
-        );
-      case GameType.killer:
-        return ChangeNotifierProvider(
-          create: (context) => GameViewModel<KillerBoard>(
-            gameType: 'killer',
-            boardFromJson: KillerBoard.fromJson,
-            createEmptyBoard: KillerBoard.empty,
-            settings: context.read<AppSettings>(),
-          ),
-          child: const GameScreen<KillerBoard>(),
-        );
-      case GameType.samurai:
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider.value(value: context.read<AppSettings>()),
-            ChangeNotifierProvider(
-              create: (context) {
-                if (initialState != null && initialState is GameState<SamuraiBoard>) {
-                  return GameViewModel<SamuraiBoard>.withState(
-                    gameType: 'samurai',
-                    boardFromJson: SamuraiBoard.fromJson,
-                    createEmptyBoard: SamuraiBoard.empty,
-                    initialState: initialState as GameState<SamuraiBoard>,
-                    settings: context.read<AppSettings>(),
-                  );
-                }
-                return GameViewModel<SamuraiBoard>(
-                  gameType: 'samurai',
-                  boardFromJson: SamuraiBoard.fromJson,
-                  createEmptyBoard: SamuraiBoard.empty,
-                  settings: context.read<AppSettings>(),
-                );
-              },
-            ),
-          ],
-          child: const GameScreen<SamuraiBoard>(),
-        );
-    }
-  }
 }

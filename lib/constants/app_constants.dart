@@ -220,6 +220,9 @@ class AppConstants {
   /// 键盘底部外边距
   static const double keypadBottomMargin = 8.0;
 
+  /// 键盘水平外边距（保留极窄的系统手势安全区，不影响返回手势）
+  static const double keypadHorizontalMargin = 8.0;
+
   /// 棋盘占可用高度的比例因子（竖屏）
   static const double boardHeightRatio = 1.5;
 

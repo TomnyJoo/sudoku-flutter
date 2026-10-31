@@ -146,6 +146,9 @@ class GameState<B extends Board> {
     bool? isAutoMarkMode,
     int? hintsUsed,
     B? savedBoard,
+    bool clearStartTime = false,
+    bool clearCompletionTime = false,
+    bool clearSavedBoard = false,
   }) => GameState<B>(
     board: board ?? this.board,
     initialBoard: initialBoard ?? this.initialBoard,
@@ -156,13 +159,14 @@ class GameState<B extends Board> {
     isCompleted: isCompleted ?? this.isCompleted,
     history: history ?? this.history,
     stats: stats ?? this.stats,
-    startTime: startTime ?? this.startTime,
-    completionTime: completionTime ?? this.completionTime,
+    startTime: clearStartTime ? null : startTime ?? this.startTime,
+    completionTime:
+        clearCompletionTime ? null : completionTime ?? this.completionTime,
     isShowingSolution: isShowingSolution ?? this.isShowingSolution,
     isMarkMode: isMarkMode ?? this.isMarkMode,
     isAutoMarkMode: isAutoMarkMode ?? this.isAutoMarkMode,
     hintsUsed: hintsUsed ?? this.hintsUsed,
-    savedBoard: savedBoard ?? this.savedBoard,
+    savedBoard: clearSavedBoard ? null : savedBoard ?? this.savedBoard,
   );
 
   /// 创建游戏状态实例
@@ -208,13 +212,21 @@ class GameState<B extends Board> {
   double get completionPercentage => stats.completionPercentage;
 
   /// 获取选中的单元格
+  ///
+  /// 仅当棋盘上存在唯一选中单元格时返回该单元格；
+  /// 若存在多个选中单元格（状态异常），返回 null，
+  /// 避免把输入写入与界面高亮不一致的单元格。
   Cell? getSelectedCell() {
+    Cell? selected;
     for (final row in board.cells) {
       for (final cell in row) {
-        if (cell.isSelected) return cell;
+        if (cell.isSelected) {
+          if (selected != null) return null;
+          selected = cell;
+        }
       }
     }
-    return null;
+    return selected;
   }
 
   /// 转换为JSON格式（命令模式序列化）

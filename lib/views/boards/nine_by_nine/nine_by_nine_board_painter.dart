@@ -1,82 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:sudoku/constants/game_constants.dart';
 import 'package:sudoku/models/board.dart';
 import 'package:sudoku/models/cell.dart';
 import 'package:sudoku/models/killer_cage.dart';
-import 'package:sudoku/renderers/board_render_context.dart';
-import 'package:sudoku/services/app_settings.dart';
+import 'package:sudoku/renderers/board_colors.dart';
 import 'package:sudoku/theme/app_colors.dart';
 import 'package:sudoku/theme/app_text_styles.dart';
-
-/// 统一棋盘组件
-///
-/// 通过 board.gameType 条件分支处理不同游戏类型的绘制差异
-class UnifiedBoardWidget extends StatelessWidget {
-  const UnifiedBoardWidget({
-    required this.board,
-    required this.onCellSelected,
-    required this.cellSize,
-    this.showDiagonalLines = true,
-    this.showRegionNumbers = true,
-    this.showCageSums = true,
-    this.showCageBorders = true,
-    super.key,
-  });
-
-  final Board board;
-  final Function(Cell) onCellSelected;
-  final double cellSize;
-  final bool showDiagonalLines;
-  final bool showRegionNumbers;
-  final bool showCageSums;
-  final bool showCageBorders;
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = Provider.of<AppSettings>(context, listen: false);
-    final boardSize = cellSize * 9;
-    final colors = BoardColors.fromContext(context);
-
-    return RepaintBoundary(
-      child: GestureDetector(
-        onTapUp: (final TapUpDetails details) {
-          final box = context.findRenderObject() as RenderBox?;
-          if (box != null) {
-            final localPosition = box.globalToLocal(details.globalPosition);
-            final col = (localPosition.dx / cellSize).floor();
-            final row = (localPosition.dy / cellSize).floor();
-
-            if (row >= 0 && row < 9 && col >= 0 && col < 9) {
-              onCellSelected(board.cells[row][col]);
-            }
-          }
-        },
-        child: SizedBox(
-          width: boardSize,
-          height: boardSize,
-          child: CustomPaint(
-            painter: _UnifiedBoardPainter(
-              board: board,
-              cellSize: cellSize,
-              colors: colors,
-              highlightMistakesEnabled: settings.highlightMistakesEnabled,
-              showDiagonalLines: showDiagonalLines,
-              showRegionNumbers: showRegionNumbers,
-              showCageSums: showCageSums,
-              showCageBorders: showCageBorders,
-            ),
-            size: Size(boardSize, boardSize),
-          ),
-        ),
-      ),
-    );
-  }
-}
+import 'package:sudoku/views/boards/nine_by_nine/board_paint_utils.dart';
 
 /// 统一棋盘绘制器
-class _UnifiedBoardPainter extends CustomPainter {
-  _UnifiedBoardPainter({
+///
+/// 负责所有棋盘类型的绘制逻辑，保持组件本身只关注输入和组合。
+class NineByNineBoardPainter extends CustomPainter {
+  NineByNineBoardPainter({
     required this.board,
     required this.cellSize,
     required this.colors,
@@ -110,42 +46,40 @@ class _UnifiedBoardPainter extends CustomPainter {
     return null;
   }
 
+  late final JigsawRegionCache? _regionCache = _buildRegionCache();
+
+  JigsawRegionCache? _buildRegionCache() {
+    final matrix = _regionMatrix;
+    if (matrix == null) return null;
+    return BoardPaintUtils.buildRegionCache(matrix);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Window: 先绘制窗口背景
     if (_isWindow) {
       _drawWindowBackgrounds(canvas);
     }
 
-    // Killer: 先绘制笼子背景
     if (_isKiller) {
       _drawKillerCageBackgrounds(canvas);
     }
 
-    // 绘制所有单元格
     _drawCells(canvas);
-
-    // 绘制网格线
     _drawGrid(canvas, size);
 
-    // Jigsaw: 绘制区域边界和区域编号
     if (_isJigsaw) {
       _drawRegionBoundaries(canvas, size);
       _drawRegionNumbers(canvas);
     }
 
-    // Diagonal: 绘制对角线
     if (_isDiagonal && showDiagonalLines) {
       _drawDiagonalLines(canvas, size);
     }
 
-    // Killer: 绘制笼子和值
     if (_isKiller && showCageSums) {
       _drawKillerCageSums(canvas);
     }
   }
-
-  // ========== 单元格绘制 ==========
 
   void _drawCells(Canvas canvas) {
     for (var row = 0; row < 9; row++) {
@@ -171,7 +105,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       paint.color = colors.boardSelectedCellColor;
       canvas.drawRect(cellRect, paint);
 
-      // Jigsaw: 选中时高亮同区域
       if (_isJigsaw) {
         _drawRegionHighlight(canvas, cell);
       }
@@ -184,7 +117,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       return;
     }
 
-    // 根据游戏类型绘制不同背景
     if (_isDiagonal) {
       final isOnMainDiagonal = row == col;
       final isOnAntiDiagonal = row + col == DiagonalConstants.boardSize - 1;
@@ -201,7 +133,6 @@ class _UnifiedBoardPainter extends CustomPainter {
     } else if (_isJigsaw) {
       paint.color = _getRegionBackgroundColor(row, col);
     } else if (_isKiller) {
-      // Killer 的背景由 _drawKillerCageBackgrounds 处理
       return;
     } else {
       paint.color = colors.boardCellBackgroundColor;
@@ -223,7 +154,7 @@ class _UnifiedBoardPainter extends CustomPainter {
                   : colors.boardUserValueColor,
             );
 
-      _drawTextInCenter(canvas, cell.value.toString(), cellRect, textStyle);
+      BoardPaintUtils.drawTextInCenter(canvas, cell.value.toString(), cellRect, textStyle);
     } else if (cell.candidates.isNotEmpty) {
       _drawCandidates(canvas, cell, cellRect);
     }
@@ -231,7 +162,6 @@ class _UnifiedBoardPainter extends CustomPainter {
 
   void _drawCandidates(Canvas canvas, Cell cell, Rect cellRect) {
     final candidateColor = colors.boardMarkerColor;
-
     final candidateRect = Rect.fromLTWH(
       cellRect.left + 2,
       cellRect.top + 2,
@@ -253,7 +183,7 @@ class _UnifiedBoardPainter extends CustomPainter {
           smallCellSize,
         );
 
-        _drawTextInCenter(
+        BoardPaintUtils.drawTextInCenter(
           canvas,
           num.toString(),
           textRect,
@@ -262,8 +192,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       }
     }
   }
-
-  // ========== 网格线绘制 ==========
 
   void _drawGrid(Canvas canvas, Size size) {
     final thinPaint = Paint()
@@ -274,7 +202,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       ..color = colors.boardGridLineBoldColor
       ..strokeWidth = _isWindow ? 2.5 : 3.0;
 
-    // 锯齿数独不绘制宫格粗线（使用统一的细线）
     final useBlockThickLines = !_isJigsaw;
 
     for (var i = 0; i <= 9; i++) {
@@ -289,8 +216,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
-
-  // ========== Diagonal 特有绘制 ==========
 
   void _drawDiagonalLines(Canvas canvas, Size size) {
     final paint = Paint()
@@ -324,8 +249,6 @@ class _UnifiedBoardPainter extends CustomPainter {
     }
   }
 
-  // ========== Window 特有绘制 ==========
-
   void _drawWindowBackgrounds(Canvas canvas) {
     for (final windowRegion in WindowConstants.windowRegions) {
       final windowRect = Rect.fromLTWH(
@@ -355,8 +278,6 @@ class _UnifiedBoardPainter extends CustomPainter {
     return false;
   }
 
-  // ========== Jigsaw 特有绘制 ==========
-
   Color _getRegionBackgroundColor(int row, int col) {
     final matrix = _regionMatrix;
     if (matrix == null) return colors.boardCellBackgroundColor;
@@ -375,7 +296,7 @@ class _UnifiedBoardPainter extends CustomPainter {
     if (matrix == null) return;
 
     final regionId = matrix[cell.row][cell.col];
-    final regionCells = _getRegionCellsCache(matrix)[regionId] ?? [];
+    final regionCells = _regionCache?.cellsByRegion[regionId] ?? [];
 
     final highlightPaint = Paint()
       ..color = colors.boardSelectedCellColor.withAlpha(0x30)
@@ -395,47 +316,17 @@ class _UnifiedBoardPainter extends CustomPainter {
     }
   }
 
-  Map<int, List<(int, int)>> _getRegionCellsCache(List<List<int>> matrix) {
-    final cache = <int, List<(int, int)>>{};
-    for (int i = 0; i < 9; i++) {
-      for (int j = 0; j < 9; j++) {
-        final regionId = matrix[i][j];
-        cache.putIfAbsent(regionId, () => []);
-        cache[regionId]!.add((i, j));
-      }
-    }
-    return cache;
-  }
-
-  Map<int, (int, int)> _getRegionMinCellCache(List<List<int>> matrix) {
-    final regionCellsCache = _getRegionCellsCache(matrix);
-    final cache = <int, (int, int)>{};
-    for (int regionId = 0; regionId < 9; regionId++) {
-      final regionCells = regionCellsCache[regionId] ?? [];
-      if (regionCells.isEmpty) continue;
-
-      int minRow = 9, minCol = 9;
-      for (final cell in regionCells) {
-        if (cell.$1 < minRow || (cell.$1 == minRow && cell.$2 < minCol)) {
-          minRow = cell.$1;
-          minCol = cell.$2;
-        }
-      }
-      cache[regionId] = (minRow, minCol);
-    }
-    return cache;
-  }
-
   void _drawRegionBoundaries(Canvas canvas, Size size) {
     final matrix = _regionMatrix;
-    if (matrix == null) return;
+    final regionCache = _regionCache;
+    if (matrix == null || regionCache == null) return;
 
     final boundaryPaint = Paint()
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..color = colors.primaryColor;
 
-    final regionCellsCache = _getRegionCellsCache(matrix);
+    final regionCellsCache = regionCache.cellsByRegion;
 
     for (var regionId = 0; regionId < 9; regionId++) {
       final regionCells = regionCellsCache[regionId] ?? [];
@@ -486,13 +377,11 @@ class _UnifiedBoardPainter extends CustomPainter {
 
   void _drawRegionNumbers(Canvas canvas) {
     if (!showRegionNumbers) return;
-    final matrix = _regionMatrix;
-    if (matrix == null) return;
-
-    final regionMinCellCache = _getRegionMinCellCache(matrix);
+    final regionCache = _regionCache;
+    if (regionCache == null) return;
 
     for (var regionId = 0; regionId < 9; regionId++) {
-      final minCell = regionMinCellCache[regionId];
+      final minCell = regionCache.minCellByRegion[regionId];
       if (minCell == null) continue;
 
       final cellRect = Rect.fromLTWH(
@@ -535,8 +424,6 @@ class _UnifiedBoardPainter extends CustomPainter {
     }
   }
 
-  // ========== Killer 特有绘制 ==========
-
   void _drawKillerCageBackgrounds(Canvas canvas) {
     if (board is! KillerBoard) return;
     final killerBoard = board as KillerBoard;
@@ -547,7 +434,6 @@ class _UnifiedBoardPainter extends CustomPainter {
       final colorIndex = cageColorMap[cage.id] ?? 0;
       final cageColor = colors.getBoardCageColor(colorIndex).withValues(alpha: 0.55);
 
-      // 绘制笼子背景色
       final fillPaint = Paint()
         ..color = cageColor
         ..style = PaintingStyle.fill;
@@ -562,31 +448,30 @@ class _UnifiedBoardPainter extends CustomPainter {
         canvas.drawRect(cellRect, fillPaint);
       }
 
-      // 绘制笼子边线（红色虚线）
-      final borderPaint = Paint()
-        ..color = colors.isDarkMode ? const Color(0xFFEF5350) : const Color(0xFFD32F2F)
-        ..strokeWidth = 1.8
-        ..style = PaintingStyle.stroke;
+      if (showCageBorders) {
+        final borderPaint = Paint()
+          ..color = colors.isDarkMode
+              ? const Color(0xFFEF5350)
+              : const Color(0xFFD32F2F)
+          ..strokeWidth = 1.8
+          ..style = PaintingStyle.stroke;
 
-      for (final coord in cage.cellCoordinates) {
-        final x = coord.$2 * cellSize;
-        final y = coord.$1 * cellSize;
+        for (final coord in cage.cellCoordinates) {
+          final x = coord.$2 * cellSize;
+          final y = coord.$1 * cellSize;
 
-        // 上边：如果上方格子不属于同一笼子，画虚线
-        if (!cage.cellCoordinates.contains((coord.$1 - 1, coord.$2))) {
-          _drawDashedLine(canvas, Offset(x, y), Offset(x + cellSize, y), borderPaint);
-        }
-        // 下边
-        if (!cage.cellCoordinates.contains((coord.$1 + 1, coord.$2))) {
-          _drawDashedLine(canvas, Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), borderPaint);
-        }
-        // 左边
-        if (!cage.cellCoordinates.contains((coord.$1, coord.$2 - 1))) {
-          _drawDashedLine(canvas, Offset(x, y), Offset(x, y + cellSize), borderPaint);
-        }
-        // 右边
-        if (!cage.cellCoordinates.contains((coord.$1, coord.$2 + 1))) {
-          _drawDashedLine(canvas, Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), borderPaint);
+          if (!cage.cellCoordinates.contains((coord.$1 - 1, coord.$2))) {
+            _drawDashedLine(canvas, Offset(x, y), Offset(x + cellSize, y), borderPaint);
+          }
+          if (!cage.cellCoordinates.contains((coord.$1 + 1, coord.$2))) {
+            _drawDashedLine(canvas, Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), borderPaint);
+          }
+          if (!cage.cellCoordinates.contains((coord.$1, coord.$2 - 1))) {
+            _drawDashedLine(canvas, Offset(x, y), Offset(x, y + cellSize), borderPaint);
+          }
+          if (!cage.cellCoordinates.contains((coord.$1, coord.$2 + 1))) {
+            _drawDashedLine(canvas, Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), borderPaint);
+          }
         }
       }
     }
@@ -713,17 +598,8 @@ class _UnifiedBoardPainter extends CustomPainter {
     return bestCoord;
   }
 
-  // ========== 通用工具方法 ==========
-
-  void _drawTextInCenter(Canvas canvas, String text, Rect rect, TextStyle style) {
-    final textSpan = TextSpan(text: text, style: style);
-    final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr)..layout();
-    final offset = Offset(rect.center.dx - textPainter.width / 2, rect.center.dy - textPainter.height / 2);
-    textPainter.paint(canvas, offset);
-  }
-
   @override
-  bool shouldRepaint(covariant _UnifiedBoardPainter oldDelegate) {
+  bool shouldRepaint(covariant NineByNineBoardPainter oldDelegate) {
     if (oldDelegate.cellSize != cellSize) return true;
     if (oldDelegate.colors != colors) return true;
     if (oldDelegate.highlightMistakesEnabled != highlightMistakesEnabled) return true;
@@ -732,18 +608,16 @@ class _UnifiedBoardPainter extends CustomPainter {
     if (oldDelegate.showCageSums != showCageSums) return true;
     if (oldDelegate.showCageBorders != showCageBorders) return true;
 
-    // 检查 board 是否变化
     if (oldDelegate.board.cells.length != board.cells.length) return true;
     for (var i = 0; i < board.cells.length; i++) {
       if (oldDelegate.board.cells[i].length != board.cells[i].length) return true;
       for (var j = 0; j < board.cells[i].length; j++) {
-        if (!_areCellsEqual(oldDelegate.board.cells[i][j], board.cells[i][j])) {
+        if (!BoardPaintUtils.areCellsEqual(oldDelegate.board.cells[i][j], board.cells[i][j])) {
           return true;
         }
       }
     }
 
-    // Killer: 检查 cages 是否变化
     if (_isKiller && board is KillerBoard && oldDelegate.board is KillerBoard) {
       final oldKiller = oldDelegate.board as KillerBoard;
       final newKiller = board as KillerBoard;
@@ -754,20 +628,4 @@ class _UnifiedBoardPainter extends CustomPainter {
     return false;
   }
 
-  bool _areCellsEqual(Cell a, Cell b) =>
-      a.value == b.value &&
-      a.isFixed == b.isFixed &&
-      a.isSelected == b.isSelected &&
-      a.isHighlighted == b.isHighlighted &&
-      a.isError == b.isError &&
-      a.candidates.length == b.candidates.length &&
-      _areSetsEqual(a.candidates, b.candidates);
-
-  bool _areSetsEqual(Set<int> a, Set<int> b) {
-    if (a.length != b.length) return false;
-    for (final item in a) {
-      if (!b.contains(item)) return false;
-    }
-    return true;
-  }
 }

@@ -51,24 +51,7 @@ class GameService<B extends Board> {
   }
 
   /// 解析游戏类型
-  GameType _parseGameType(String type) {
-    switch (type.toLowerCase()) {
-      case 'standard':
-        return GameType.standard;
-      case 'diagonal':
-        return GameType.diagonal;
-      case 'window':
-        return GameType.window;
-      case 'jigsaw':
-        return GameType.jigsaw;
-      case 'killer':
-        return GameType.killer;
-      case 'samurai':
-        return GameType.samurai;
-      default:
-        return GameType.standard;
-    }
-  }
+  GameType _parseGameType(String type) => GameType.fromName(type);
 
   /// 创建游戏状态
   GameState<B> createGameState({
@@ -247,6 +230,9 @@ class GameService<B extends Board> {
     DateTime? completionTime,
     bool? isShowingSolution,
     B? savedBoard,
+    bool clearStartTime = false,
+    bool clearCompletionTime = false,
+    bool clearSavedBoard = false,
   }) => state.createInstance(
     board: board ?? state.board,
     initialBoard: initialBoard ?? state.initialBoard,
@@ -257,13 +243,14 @@ class GameService<B extends Board> {
     isCompleted: isCompleted ?? state.isCompleted,
     history: history ?? state.history,
     stats: stats ?? state.stats,
-    startTime: startTime ?? state.startTime,
-    completionTime: completionTime ?? state.completionTime,
+    startTime: clearStartTime ? null : startTime ?? state.startTime,
+    completionTime:
+        clearCompletionTime ? null : completionTime ?? state.completionTime,
     isShowingSolution: isShowingSolution ?? state.isShowingSolution,
     isMarkMode: isMarkMode ?? state.isMarkMode,
     isAutoMarkMode: isAutoMarkMode ?? state.isAutoMarkMode,
     hintsUsed: hintsUsed ?? state.hintsUsed,
-    savedBoard: savedBoard ?? state.savedBoard,
+    savedBoard: clearSavedBoard ? null : savedBoard ?? state.savedBoard,
   );
 
   /// 更新棋盘状态（无历史记录，用于选择单元格、自动标记等UI操作）
@@ -348,6 +335,9 @@ class GameService<B extends Board> {
       isCompleted: false,
       mistakes: 0,
       elapsedTime: 0,
+      isShowingSolution: false,
+      clearCompletionTime: true,
+      clearSavedBoard: true,
     );
   }
 

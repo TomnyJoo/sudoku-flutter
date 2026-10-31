@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
 
+import 'keyboard_grid.dart';
+
 /// 功能键盘组件
 ///
 /// 按钮顺序（3×3 网格）：
@@ -50,38 +52,15 @@ class _FunctionKeyboardState extends State<FunctionKeyboard> {
   @override
   Widget build(final BuildContext context) {
     final buttonSize = widget.buttonSize;
-    const spacing = AppConstants.keyboardButtonSpacing;
-    const padding = AppConstants.keyboardPadding;
 
-    return Container(
-      padding: const EdgeInsets.all(padding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(
-          3,
-          (final row) => Padding(
-            padding: EdgeInsets.only(bottom: row < 2 ? spacing : 0),
-            child: SizedBox(
-              height: buttonSize,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (final col) {
-                  final index = row * 3 + col;
-                  return Padding(
-                    padding: EdgeInsets.only(right: col < 2 ? spacing : 0),
-                    child: _buildControlButton(
-                      _getIconForIndex(index),
-                      _getLabelForIndex(index),
-                      _getCallbackForIndex(index),
-                      index,
-                      buttonSize,
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ),
-        ),
+    return KeyboardGrid(
+      buttonSize: buttonSize,
+      buttonBuilder: (index) => _buildControlButton(
+        _getIconForIndex(index),
+        _getLabelForIndex(index),
+        _getCallbackForIndex(index),
+        index,
+        buttonSize,
       ),
     );
   }

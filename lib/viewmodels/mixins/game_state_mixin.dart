@@ -33,9 +33,14 @@ mixin GameStateMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
       // 隐藏答案：从 savedBoard 恢复棋盘
       final savedBoard = gameState.savedBoard;
       if (savedBoard != null) {
-        gameState = gameService.hideSolution(gameState).copyWith(board: savedBoard, savedBoard: null);
+        gameState = gameService.hideSolution(gameState).copyWith(
+          board: savedBoard,
+          clearSavedBoard: true,
+        );
       } else {
-        gameState = gameService.hideSolution(gameState);
+        gameState = gameService.hideSolution(gameState).copyWith(
+          clearSavedBoard: true,
+        );
       }
     } else {
       // 显示答案：保存当前棋盘

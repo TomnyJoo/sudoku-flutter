@@ -30,19 +30,6 @@ mixin GamePersistenceMixin<B extends Board, T extends GameState<B>> on ChangeNot
     }
   }
   
-  void saveGameFireAndForget() {
-    try {
-      if (gameState.isCompleted) return;
-      if (gameState.startTime == null) return;
-      
-      if (_isValidGameState(gameState)) {
-        gameService.saveGameState(gameState);
-      }
-    } catch (e) {
-      _handleError('保存游戏失败', e);
-    }
-  }
-  
   Future<void> saveGameSyncBlocking() async {
     try {
       if (gameState.isCompleted) return;

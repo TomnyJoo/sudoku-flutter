@@ -8,7 +8,7 @@ import 'package:sudoku/index.dart';
 /// 1. 只显示当前选中的9x9子数独
 /// 2. 支持滚动
 /// 3. 角宫格有明显的颜色区分
-class SamuraiBoardWidget extends GameBoardWidget<Cell> {
+class SamuraiBoardWidget extends BoardWidgetBase<Cell> {
 
   const SamuraiBoardWidget({
     required this.board,

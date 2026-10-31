@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
 
-class CustomFunKeyboard extends StatelessWidget {
-  const CustomFunKeyboard({
+class CustomGameKeyboard extends StatelessWidget {
+  const CustomGameKeyboard({
     required this.onStartGame,
     required this.onClearBoard,
     required this.isValidating,

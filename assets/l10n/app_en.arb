@@ -450,6 +450,9 @@
   "@difficultyDescCustom": {
     "description": "difficultyDescCustom"
   },
+  "@failedToLoadSavedGames": {
+    "description": "failedToLoadSavedGames"
+  },
   "@failedToLoadStats": {
     "description": "failedToLoadStats"
   },
@@ -643,6 +646,7 @@
   "difficultyDescExpert": "Expert difficulty, push your limits",
   "difficultyDescMaster": "Master difficulty, only true Sudoku masters can complete",
   "difficultyDescCustom": "Custom difficulty",
+  "failedToLoadSavedGames": "Failed to load saved games",
   "failedToLoadStats": "Failed to load statistics",
   "failedToAddGameRecord": "Failed to add game record",
   "failedToClearStats": "Failed to clear statistics",

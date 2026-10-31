@@ -63,12 +63,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ==================== 配色 ====================
 
   static final _gameTypeStyles = {
-    GameType.standard: (const Color(0xFF6366F1), const Color(0xFF818CF8), Icons.grid_view_rounded),
-    GameType.diagonal: (const Color(0xFFA855F7), const Color(0xFFC084FC), Icons.tag_rounded),
-    GameType.window: (const Color(0xFF3B82F6), const Color(0xFF60A5FA), Icons.window_rounded),
-    GameType.jigsaw: (const Color(0xFF06B6D4), const Color(0xFF22D3EE), Icons.extension_rounded),
-    GameType.killer: (const Color(0xFFEF4444), const Color(0xFFF87171), Icons.bolt_rounded),
-    GameType.samurai: (const Color(0xFFF97316), const Color(0xFFFB923C), Icons.apps_rounded),
+    GameType.standard: (
+      const Color(0xFF6366F1),
+      const Color(0xFF818CF8),
+      Icons.grid_view_rounded,
+    ),
+    GameType.diagonal: (
+      const Color(0xFFA855F7),
+      const Color(0xFFC084FC),
+      Icons.tag_rounded,
+    ),
+    GameType.window: (
+      const Color(0xFF3B82F6),
+      const Color(0xFF60A5FA),
+      Icons.window_rounded,
+    ),
+    GameType.jigsaw: (
+      const Color(0xFF06B6D4),
+      const Color(0xFF22D3EE),
+      Icons.extension_rounded,
+    ),
+    GameType.killer: (
+      const Color(0xFFEF4444),
+      const Color(0xFFF87171),
+      Icons.bolt_rounded,
+    ),
+    GameType.samurai: (
+      const Color(0xFFF97316),
+      const Color(0xFFFB923C),
+      Icons.apps_rounded,
+    ),
   };
 
   static const _difficultyStyles = [
@@ -177,10 +201,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isDarkMode ? Colors.white.withAlpha(12) : Colors.white.withAlpha(60),
+          color: isDarkMode
+              ? Colors.white.withAlpha(12)
+              : Colors.white.withAlpha(60),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDarkMode ? Colors.white.withAlpha(16) : Colors.white.withAlpha(80),
+            color: isDarkMode
+                ? Colors.white.withAlpha(16)
+                : Colors.white.withAlpha(80),
           ),
         ),
         child: ClipRRect(
@@ -190,7 +218,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Icon(
               icon,
               size: 20,
-              color: isDarkMode ? Colors.white.withAlpha(200) : const Color(0xFF3730A3),
+              color: isDarkMode
+                  ? Colors.white.withAlpha(200)
+                  : const Color(0xFF3730A3),
             ),
           ),
         ),
@@ -213,19 +243,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             // 顶部预留空间，避开浮动的工具栏
             const SizedBox(height: 52),
-            _buildHeader(localizations.appName, localizations.selectSudokuType, isDarkMode),
+            _buildHeader(
+              localizations.appName,
+              localizations.selectSudokuType,
+              isDarkMode,
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final crossCount = isLandscape ? 3 : 2;
-                  final spacing = constraints.maxHeight < 300 ? 6.0 : (constraints.maxHeight < 500 ? 8.0 : 10.0);
+                  final spacing = constraints.maxHeight < 300
+                      ? 6.0
+                      : (constraints.maxHeight < 500 ? 8.0 : 10.0);
                   // 动态计算 childAspectRatio：卡片恰好填满可用高度
                   final rows = (GameType.values.length / crossCount).ceil();
                   final totalSpacingV = spacing * (rows - 1);
-                  final cardHeight = (constraints.maxHeight - totalSpacingV) / rows;
-                  final cardWidth = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
-                  final childAspectRatio = (cardWidth / cardHeight.clamp(30, 500));
+                  final cardHeight =
+                      (constraints.maxHeight - totalSpacingV) / rows;
+                  final cardWidth =
+                      (constraints.maxWidth - spacing * (crossCount - 1)) /
+                      crossCount;
+                  final childAspectRatio =
+                      (cardWidth / cardHeight.clamp(30, 500));
 
                   return GridView.count(
                     crossAxisCount: crossCount,
@@ -239,7 +279,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: _buildGameTypeCard(
                           context: context,
                           type: type,
-                          name: GameFactory.getLocalizedGameName(type, gameLocalizations),
+                          name: GameFactory.getLocalizedGameName(
+                            type,
+                            gameLocalizations,
+                          ),
                           gameLocalizations: gameLocalizations,
                           isDarkMode: isDarkMode,
                         ),
@@ -269,7 +312,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 : const Color(0xFF6366F1).withAlpha(20),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(Icons.grid_view_rounded, size: 26, color: Color(0xFF818CF8)),
+          child: const Icon(
+            Icons.grid_view_rounded,
+            size: 26,
+            color: Color(0xFF818CF8),
+          ),
         ),
         const SizedBox(height: 12),
         ShaderMask(
@@ -291,7 +338,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           subtitle,
           style: TextStyle(
             fontSize: 13,
-            color: isDarkMode ? Colors.white.withAlpha(100) : const Color(0xFF6366F1).withAlpha(120),
+            color: isDarkMode
+                ? Colors.white.withAlpha(100)
+                : const Color(0xFF6366F1).withAlpha(120),
           ),
         ),
       ],
@@ -371,7 +420,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 subtitles[type] ?? '',
                 style: TextStyle(
                   fontSize: 10,
-                  color: isDarkMode ? Colors.white.withAlpha(80) : const Color(0xFF64748B),
+                  color: isDarkMode
+                      ? Colors.white.withAlpha(80)
+                      : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -409,14 +460,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // 顶部预留空间，与游戏类型页保持一致，避开浮动的工具栏
                 const SizedBox(height: 52),
                 SizedBox(height: verticalSpacing * 0.8),
-                _buildDifficultyHeader(_currentGameName, localizations.selectDifficulty, icon, primaryColor, lightColor, isDarkMode, iconSize: iconSize),
+                _buildDifficultyHeader(
+                  _currentGameName,
+                  localizations.selectDifficulty,
+                  icon,
+                  primaryColor,
+                  lightColor,
+                  isDarkMode,
+                  iconSize: iconSize,
+                ),
                 SizedBox(height: verticalSpacing),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       return ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 400),
-                        child: _buildDifficultyList(context, isDarkMode, availableHeight: constraints.maxHeight),
+                        child: _buildDifficultyList(
+                          context,
+                          isDarkMode,
+                          availableHeight: constraints.maxHeight,
+                        ),
                       );
                     },
                   ),
@@ -433,7 +496,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDifficultyHeader(String gameName, String subtitle, IconData icon, Color primaryColor, Color lightColor, bool isDarkMode, {double iconSize = 56.0}) {
+  Widget _buildDifficultyHeader(
+    String gameName,
+    String subtitle,
+    IconData icon,
+    Color primaryColor,
+    Color lightColor,
+    bool isDarkMode, {
+    double iconSize = 56.0,
+  }) {
     return Column(
       children: [
         Container(
@@ -459,17 +530,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           subtitle,
           style: TextStyle(
             fontSize: 13,
-            color: isDarkMode ? Colors.white.withAlpha(100) : const Color(0xFF64748B),
+            color: isDarkMode
+                ? Colors.white.withAlpha(100)
+                : const Color(0xFF64748B),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDifficultyList(BuildContext context, bool isDarkMode, {required double availableHeight}) {
+  Widget _buildDifficultyList(
+    BuildContext context,
+    bool isDarkMode, {
+    required double availableHeight,
+  }) {
     final localizations = LocalizationUtils.app(context);
     final difficultyLevels = GameFactory.getDifficultyLevels(
-      GameType.values.firstWhere((t) => GameFactory.getLocalizedGameName(t, LocalizationUtils.game(context)) == _currentGameName, orElse: () => GameType.standard),
+      GameType.values.firstWhere(
+        (t) =>
+            GameFactory.getLocalizedGameName(
+              t,
+              LocalizationUtils.game(context),
+            ) ==
+            _currentGameName,
+        orElse: () => GameType.standard,
+      ),
     );
     final difficulties = difficultyLevels.map((level) {
       Difficulty difficulty;
@@ -503,7 +588,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final count = difficulties.length;
     // 根据可用空间动态调整间距
-    final spacing = availableHeight < 300 ? 4.0 : (availableHeight < 450 ? 6.0 : 10.0);
+    final spacing = availableHeight < 300
+        ? 4.0
+        : (availableHeight < 450 ? 6.0 : 10.0);
 
     // 用 Column + Expanded 均分空间，不硬计算内部尺寸
     return Column(
@@ -539,79 +626,92 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: () => _startGame(context, difficulty),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: 48,
-          maxHeight: 80,
-        ),
+        constraints: const BoxConstraints(minHeight: 48, maxHeight: 80),
         child: _GlassCard(
           isDarkMode: isDarkMode,
           borderRadius: 16,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
-            children: [
-              // 数字容器：固定宽度，高度随 Row 自适应
-              SizedBox(
-                width: 36,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: primaryColor.withAlpha(isDarkMode ? 30 : 25),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: FittedBox(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(fontWeight: FontWeight.w700, color: lightColor),
+              children: [
+                // 数字容器：固定宽度，高度随 Row 自适应
+                SizedBox(
+                  width: 36,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: primaryColor.withAlpha(isDarkMode ? 30 : 25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: FittedBox(
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: lightColor,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1E1B4B),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF1E1B4B),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        stars,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: const Color(0xFFEAB308).withAlpha(isDarkMode ? 100 : 180),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          stars,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: const Color(
+                              0xFFEAB308,
+                            ).withAlpha(isDarkMode ? 100 : 180),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
 
-  Widget _buildDifficultyActions(BuildContext context, bool isDarkMode, Color primaryColor) {
+  Widget _buildDifficultyActions(
+    BuildContext context,
+    bool isDarkMode,
+    Color primaryColor,
+  ) {
     final gameType = GameType.values.firstWhere(
-      (t) => GameFactory.getLocalizedGameName(t, LocalizationUtils.game(context)) == _currentGameName,
+      (t) =>
+          GameFactory.getLocalizedGameName(
+            t,
+            LocalizationUtils.game(context),
+          ) ==
+          _currentGameName,
       orElse: () => GameType.standard,
     );
     final showCustomGame = GameFactory.showCustomGame(gameType);
@@ -621,6 +721,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: FutureBuilder<bool>(
         future: _checkHasSavedGameForCurrentType(gameType),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            final errorMessage = LocalizationUtils.app(
+              context,
+            ).failedToLoadSavedGames;
+            if (!showCustomGame) {
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(errorMessage),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {}),
+                    child: Text(LocalizationUtils.app(context).retry),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: Text(errorMessage)),
+                TextButton(
+                  onPressed: () => setState(() {}),
+                  child: Text(LocalizationUtils.app(context).retry),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.edit_outlined,
+                    label: LocalizationUtils.app(context).customGame,
+                    color: primaryColor,
+                    isDarkMode: isDarkMode,
+                    onTap: () => _openCustomGame(context, gameType),
+                  ),
+                ),
+              ],
+            );
+          }
+
           final hasSaved = snapshot.data ?? false;
           if (!showCustomGame && !hasSaved) return const SizedBox.shrink();
 
@@ -675,7 +814,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -692,12 +838,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: [
           Text(
             localizations.homeVersion(_version ?? ''),
-            style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white.withAlpha(50) : const Color(0xFF94A3B8)),
+            style: TextStyle(
+              fontSize: 10,
+              color: isDarkMode
+                  ? Colors.white.withAlpha(50)
+                  : const Color(0xFF94A3B8),
+            ),
           ),
           const SizedBox(width: 12),
           Text(
             localizations.homeCopyright,
-            style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white.withAlpha(50) : const Color(0xFF94A3B8)),
+            style: TextStyle(
+              fontSize: 10,
+              color: isDarkMode
+                  ? Colors.white.withAlpha(50)
+                  : const Color(0xFF94A3B8),
+            ),
           ),
         ],
       ),
@@ -708,55 +864,95 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _goToDifficulty(GameType type, String name) {
     setState(() => _currentGameName = name);
-    _pageController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+    );
   }
 
   void _backToGames() {
-    _pageController.previousPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+    );
   }
 
   // ==================== 游戏启动 ====================
 
   void _startGame(BuildContext context, Difficulty difficulty) {
     final gameType = GameType.values.firstWhere(
-      (t) => GameFactory.getLocalizedGameName(t, LocalizationUtils.game(context)) == _currentGameName,
+      (t) =>
+          GameFactory.getLocalizedGameName(
+            t,
+            LocalizationUtils.game(context),
+          ) ==
+          _currentGameName,
       orElse: () => GameType.standard,
     );
-    Navigator.pushNamed(context, '/game', arguments: GameRouteArgs(gameType: gameType, difficulty: difficulty));
+    Navigator.pushNamed(
+      context,
+      '/game',
+      arguments: GameRouteArgs(gameType: gameType, difficulty: difficulty),
+    );
   }
 
   void _openCustomGame(BuildContext context, GameType gameType) {
     Navigator.pushNamed(context, GameFactory.getCustomGameRoute(gameType));
   }
 
-  Future<void> _continueSavedGame(BuildContext context, GameType gameType) async {
-    final gameTypeName = gameType.name;
-    final savedGames = await GameStorageService.getSavedGameInfos();
-    SavedGameInfo? savedGame;
-    for (final game in savedGames) {
-      if (game.gameType == gameTypeName) {
-        savedGame = game;
-        break;
+  Future<void> _continueSavedGame(
+    BuildContext context,
+    GameType gameType,
+  ) async {
+    try {
+      final gameTypeName = gameType.name;
+      final savedGames = await GameStorageService.getSavedGameInfos();
+      SavedGameInfo? savedGame;
+      for (final game in savedGames) {
+        if (game.gameType == gameTypeName) {
+          savedGame = game;
+          break;
+        }
       }
+      if (savedGame == null) return;
+      await _loadSavedGame(savedGame);
+    } catch (error, stackTrace) {
+      AppLogger.error('读取游戏存档失败', error, stackTrace);
+      _showSavedGameError();
     }
-    if (savedGame == null) return;
-    await _loadSavedGame(savedGame);
   }
 
   Future<void> _loadSavedGame(SavedGameInfo gameInfo) async {
     try {
-      final gameType = GameType.values.firstWhere(
-        (type) => type.toString().split('.').last == gameInfo.gameType,
-        orElse: () => GameType.standard,
+      final gameType = GameType.fromName(gameInfo.gameType);
+      final service = GameFactory.createGameService(
+        gameType,
+        context.read<GameValidator>(),
       );
-      final service = GameFactory.createGameService(gameType, GameValidator());
       final savedState = await service.loadGameState(gameInfo.saveKey);
       if (savedState != null && mounted) {
-        await Navigator.pushNamed(context, '/game', arguments: GameRouteArgs(gameType: gameType, initialState: savedState));
+        await Navigator.pushNamed(
+          context,
+          '/game',
+          arguments: GameRouteArgs(
+            gameType: gameType,
+            initialState: savedState,
+          ),
+        );
       }
-    } catch (e) {
-      AppLogger.error('加载保存的游戏失败', e, StackTrace.current);
+    } catch (error, stackTrace) {
+      AppLogger.error('加载保存的游戏失败', error, stackTrace);
+      _showSavedGameError();
     }
+  }
+
+  void _showSavedGameError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(LocalizationUtils.app(context).failedToLoadSavedGames),
+      ),
+    );
   }
 
   Future<bool> _checkHasSavedGameForCurrentType(GameType gameType) async {
@@ -780,7 +976,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: Text(
           localizations.gameRules,
           textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : const Color(0xFF1E1B4B)),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : const Color(0xFF1E1B4B),
+          ),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -794,12 +993,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Text(
                       GameFactory.getLocalizedGameName(type, gameLocalizations),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDarkMode ? Colors.white : const Color(0xFF1E1B4B)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDarkMode
+                            ? Colors.white
+                            : const Color(0xFF1E1B4B),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       gameLocalizations.getGameDescription(type.name),
-                      style: TextStyle(fontSize: 12, height: 1.4, color: isDarkMode ? Colors.white.withAlpha(160) : const Color(0xFF64748B)),
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: isDarkMode
+                            ? Colors.white.withAlpha(160)
+                            : const Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 ),
@@ -822,7 +1033,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 /// 毛玻璃卡片组件
 class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.isDarkMode, required this.borderRadius, required this.child});
+  const _GlassCard({
+    required this.isDarkMode,
+    required this.borderRadius,
+    required this.child,
+  });
 
   final bool isDarkMode;
   final double borderRadius;
@@ -832,10 +1047,14 @@ class _GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.white.withAlpha(8) : Colors.white.withAlpha(70),
+        color: isDarkMode
+            ? Colors.white.withAlpha(8)
+            : Colors.white.withAlpha(70),
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: isDarkMode ? Colors.white.withAlpha(10) : Colors.white.withAlpha(120),
+          color: isDarkMode
+              ? Colors.white.withAlpha(10)
+              : Colors.white.withAlpha(120),
         ),
         boxShadow: [
           BoxShadow(

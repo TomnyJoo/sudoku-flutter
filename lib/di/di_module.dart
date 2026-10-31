@@ -5,15 +5,12 @@ import 'package:sudoku/index.dart';
 /// summary: 依赖注入模块
 class DiModule {
   /// 核心服务
-  static List<SingleChildWidget> coreProviders = [
+  static final List<SingleChildWidget> coreProviders = [
     Provider<GameValidator>(create: (_) => GameValidator()),
-    Provider<TemplateManager>(create: (_) => TemplateManager()),
-    Provider<GameGenerator>(create: (_) => GameGenerator()),
-    Provider<ErrorHandler>(create: (_) => ErrorHandler()),
   ];
   
   /// 设置和主题服务
-  static List<SingleChildWidget> settingsProviders = [
+  static final List<SingleChildWidget> settingsProviders = [
     ChangeNotifierProvider(create: (_) => AppSettings()..loadSettings()),
     ChangeNotifierProvider(create: (_) => ThemeManager()),
   ];

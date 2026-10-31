@@ -6,14 +6,14 @@ Sudoku 是一个基于 Flutter 的跨平台数独游戏应用，支持多种数�
 
 ### 支持的游戏类型
 
-| 类型    | 标识       | 说明                                   |
-|--------|------------|---------------------------------------|
-| 标准    | `standard` | 经典 9×9 数独                          |
-| 对角线  | `diagonal` | 增加两条对角线约束                       |
-| 窗口    | `window`   | 增加窗口区域约束                        |
-| 锯齿    | `jigsaw`   | 异形宫格，需要模板数据                   |
-| 杀手    | `killer`   | 笼子求和约束，需要模板数据                |
-| 武士    | `samurai`  | 五个 9×9 子盘联动，21×21 棋盘            |
+| 类型   | 标识       | 说明                          |
+| ------ | ---------- | ----------------------------- |
+| 标准   | `standard` | 经典 9×9 数独                 |
+| 对角线 | `diagonal` | 增加两条对角线约束            |
+| 窗口   | `window`   | 增加窗口区域约束              |
+| 锯齿   | `jigsaw`   | 异形宫格，需要模板数据        |
+| 杀手   | `killer`   | 笼子求和约束，需要模板数据    |
+| 武士   | `samurai`  | 五个 9×9 子盘联动，21×21 棋盘 |
 
 ### 技术栈
 
@@ -25,14 +25,18 @@ Sudoku 是一个基于 Flutter 的跨平台数独游戏应用，支持多种数�
 
 ## 二、项目架构
 
+> `docs/系统详细设计说明书.md` 描述的是目标设计，包含尚未落地的接口与目录方案；当前实现以本节结构和 `lib/` 源码为准。
+
 ### 目录结构
 
-```
+```text
 lib/
+├── constants/       # 应用与游戏常量
 ├── di/              # 依赖注入
 ├── exceptions/      # 异常处理
 ├── l10n/            # 国际化资源
 ├── models/          # 数据模型层（Board、GameType、GameState 等）
+├── renderers/       # 棋盘配色与布局计算
 ├── services/        # 业务逻辑层（生成器、验证器、存储服务）
 │   ├── generation/  # 谜题生成子模块
 │   ├── solving/     # 求解器子模块
@@ -41,14 +45,23 @@ lib/
 │   └── statistics/  # 统计服务子模块
 ├── theme/           # 主题配置（颜色、字体、暗黑模式）
 ├── utils/           # 工具类
-│   ├── constants/   # 常量定义
-│   └── validators/  # 验证器工具
 ├── viewmodels/      # ViewModel 层（MVVM 模式）
 │   └── mixins/      # ViewModel 功能混入
 ├── views/           # UI 视图层
-│   ├── components/  # 通用组件（棋盘、按钮、对话框）
-│   │   └── boards/  # 棋盘绘制组件
-│   └── statistics/  # 统计页面子组件
+│   ├── boards/      # 棋盘组件
+│   │   ├── nine_by_nine/ # 9x9 数独变体棋盘
+│   │   └── samurai/ # Samurai 棋盘
+│   ├── completion/  # 完成页与工厂
+│   ├── custom_game/ # 自定义游戏页
+│   ├── game/        # 游戏页及专属部件
+│   │   ├── game_screen_factory.dart # 按游戏类型创建游戏页与 ViewModel
+│   ├── home/        # 首页
+│   ├── settings/    # 设置页
+│   ├── statistics/  # 统计页及 tabs
+│   └── components/  # 跨页面共享组件
+│       ├── common/
+│       ├── dialogs/
+│       └── keyboards/
 ├── app_initializer.dart  # 应用初始化
 ├── index.dart       # 模块导出
 └── main.dart        # 应用入口
@@ -59,7 +72,7 @@ assets/
 ├── images/          # 图片资源
 ├── l10n/            # 国际化 ARB 文件
 ├── music/           # 音频资源
-└── log.md           # 项目日志文档
+└── templates/       # 区域与解答模板
 ```
 
 ### 核心设计模式
@@ -76,13 +89,13 @@ assets/
 
 Board 是所有棋盘类型的抽象基类，定义在 `lib/models/board.dart` 中。每种游戏类型对应一个子类：
 
-| 子类          | gameType   | 特殊属性                                   |
-|---------------|------------|--------------------------------------------|
-| StandardBoard | `standard` | 无                                         |
-| DiagonalBoard | `diagonal` | 通过 regions 添加对角线约束                |
-| WindowBoard   | `window`   | 通过 regions 添加窗口约束                  |
-| JigsawBoard   | `jigsaw`   | regionMatrix（异形宫格矩阵）              |
-| KillerBoard   | `killer`   | cages（笼子列表）                          |
+| 子类          | gameType   | 特殊属性                                          |
+| ------------- | ---------- | ------------------------------------------------- |
+| StandardBoard | `standard` | 无                                                |
+| DiagonalBoard | `diagonal` | 通过 regions 添加对角线约束                       |
+| WindowBoard   | `window`   | 通过 regions 添加窗口约束                         |
+| JigsawBoard   | `jigsaw`   | regionMatrix（异形宫格矩阵）                      |
+| KillerBoard   | `killer`   | cages（笼子列表）                                 |
 | SamuraiBoard  | `samurai`  | 固定size=21，subGridOffsets 引用 SamuraiConstants |
 
 每个子类必须实现：构造函数、`fromJson`、`createInstance`、`createRegions`、`empty()`、`toJson`、`gameType` getter。
@@ -105,6 +118,7 @@ abstract class IGameGenerator {
 ```
 
 生成流程：
+
 1. `PuzzleGenerator.generateGame()` → 门面入口
 2. `IsolateGameGenerator` → 在独立 Isolate 中执行
 3. `GameGenerator.generate()` → 注册分发
@@ -120,9 +134,11 @@ abstract class IGameGenerator {
 
 ### 3.4 验证器（GameValidator）
 
-完全基于 `Board.regions` 做区域唯一性验证。新游戏类型只要在 Board 子类的 `createRegions()` 中正确创建区域即可自动获得验证支持。
+完全基于 `Board.regions` 做区域唯一性验证。新游戏类型只要在 Board 子类的 `createRegions()`
+中正确创建区域即可自动获得验证支持。
 
 核心方法：
+
 - `validateBoard(Board)` — 遍历所有 region 检查唯一性
 - `isValidMove(Board, row, col, value)` — 检查单步移动合法性
 - `isGameCompleted(Board)` — 检查是否填满且有效
@@ -133,6 +149,7 @@ abstract class IGameGenerator {
 统一管理游戏状态的保存/加载/查询/清除，基于 SharedPreferences。
 
 核心方法：
+
 - `saveGameState(GameState, saveKey)` — 保存
 - `loadGameState(saveKey, boardFromJson)` — 加载
 - `getSavedGameInfos()` — 查询所有保存的游戏
@@ -140,24 +157,24 @@ abstract class IGameGenerator {
 
 ### 3.6 求解器
 
-| 求解器          | 文件                     | 用途                                             |
-|-----------------|--------------------------|------------------------------------------------|
-| BitSolver       | `bit_solver.dart`        | 基于位掩码的快速解计数（Standard/Diagonal/Window） |
-| JigsawBitSolver | `jigsaw_bit_solver.dart` | 锯齿数独专用位掩码求解器                           |
-| SamuraiBitSolver | `samurai_bit_solver.dart` | 武士数独专用位掩码求解器                         |
-| DLXSudokuSolver | `dlx_solver.dart`        | Dancing Links 算法求解器                         |
+| 求解器           | 文件                      | 用途                                               |
+| ---------------- | ------------------------- | -------------------------------------------------- |
+| BitSolver        | `bit_solver.dart`         | 基于位掩码的快速解计数（Standard/Diagonal/Window） |
+| JigsawBitSolver  | `jigsaw_bit_solver.dart`  | 锯齿数独专用位掩码求解器                           |
+| SamuraiBitSolver | `samurai_bit_solver.dart` | 武士数独专用位掩码求解器                           |
+| DLXSudokuSolver  | `dlx_solver.dart`         | Dancing Links 算法求解器                           |
 
 ### 3.7 策略引擎
 
 `StrategyService` 管理解题策略的注册和执行，支持人类解题提示：
 
-| 级别          | 策略                                          |
-|---------------|-----------------------------------------------|
-| Basic         | NakedSingle、HiddenSingle                     |
-| Intermediate  | NakedPair、HiddenPair、LockedCandidate        |
-| Advanced      | NakedTriple、HiddenTriple                     |
-| Expert        | XWing、Swordfish                              |
-| Killer        | CageConstraint、45Rule、OverlapElimination、CageBlocking |
+| 级别         | 策略                                                     |
+| ------------ | -------------------------------------------------------- |
+| Basic        | NakedSingle、HiddenSingle                                |
+| Intermediate | NakedPair、HiddenPair、LockedCandidate                   |
+| Advanced     | NakedTriple、HiddenTriple                                |
+| Expert       | XWing、Swordfish                                         |
+| Killer       | CageConstraint、45Rule、OverlapElimination、CageBlocking |
 
 ---
 
@@ -189,6 +206,7 @@ GameType.hyper: GameTypeConfig(
 **修改文件：`lib/models/board.dart`**
 
 在 board.dart 末尾添加 HyperBoard 子类，参考 StandardBoard 的实现，必须实现：
+
 - 构造函数：接受 cells、regions 参数
 - `gameType` getter：返回 `'hyper'`
 - `createInstance()`：创建新实例
@@ -248,18 +266,18 @@ case 'HyperBoard':
 
 **修改文件：`lib/main.dart`**
 
-1. `_GameScreenWrapper.build()` 的 switch 中添加 `case GameType.hyper`
-2. `_createFinishScreen()` 的 switch 中添加 `case 'hyper'`
+1. `GameScreenFactory.build()` 的 switch 中添加 `case GameType.hyper`
+2. `CompletionScreenFactory.create()` 的 switch 中添加 hyper 对应的 Board 类型
 3. 如需自定义游戏路由，添加对应路由
 
-**修改文件：`lib/views/home_page.dart`**
+**修改文件：`lib/views/home/home_screen.dart`**
 
 1. `_gameTypeStyles` 添加 `GameType.hyper` 的颜色和图标
 2. 游戏类型描述映射添加 hyper 条目
 
-**修改文件：`lib/views/components/boards/game_board_widget.dart`**（如有特殊绘制）
+**修改文件：`lib/views/boards/nine_by_nine/nine_by_nine_board_painter.dart`**（如有特殊绘制）
 
-- 在 `_UnifiedBoardPainter` 中添加对应的绘制逻辑
+- 在 `NineByNineBoardPainter` 中添加对应的绘制逻辑
 
 ### 步骤 7：配置文件
 
@@ -274,6 +292,7 @@ case 'HyperBoard':
 ### 步骤 8：国际化
 
 **新建文件：**
+
 - `assets/l10n/game_hyper_en.arb`（英文）
 - `assets/l10n/game_hyper_zh.arb`（中文）
 
@@ -281,38 +300,44 @@ case 'HyperBoard':
 
 ## 五、修改文件清单（快速检查表）
 
-| 必要性 | 文件路径                                          | 修改内容                                     |
-|--------|--------------------------------------------------|----------------------------------------------|
-| 必修   | `lib/models/game_type.dart`                      | enum + ConfigFactory 添加 hyper              |
-| 必修   | `lib/models/board.dart`                          | 添加 HyperBoard 子类                         |
-| 必修   | `lib/services/game_factory.dart`                 | createGameService + createGameGenerator      |
-| 必修   | `lib/services/generation/index.dart`             | export hyper_generator                       |
-| 必修   | `lib/models/generation_contracts.dart`           | fromJson 添加 HyperBoard case                |
-| 必修   | `lib/main.dart`                                  | 路由 + ViewModel + FinishScreen              |
-| 必修   | `lib/views/home_page.dart`                       | 颜色 + 图标 + 描述                           |
-| 必修   | `assets/config/game_types.json`                  | hyper 配置块                                 |
-| 新建   | `lib/services/generation/hyper_generator.dart`   | 实现 IGameGenerator                          |
-| 新建   | `assets/l10n/game_hyper_*.arb`                   | 国际化资源                                   |
-| 可选   | `lib/services/game_config.dart`                  | 默认配置、图标映射                           |
-| 可选   | `lib/services/game_validator.dart`               | 特殊验证规则（如有）                         |
-| 可选   | `lib/views/components/boards/game_board_widget.dart` | 特殊绘制逻辑（如有）                        |
-| 可选   | `assets/config/difficulty_config.json`           | 难度参数配置                                 |
+| 必要性 | 文件路径                                                        | 修改内容                                |
+| ------ | --------------------------------------------------------------- | --------------------------------------- |
+| 必修   | `lib/models/game_type.dart`                                     | enum + ConfigFactory 添加 hyper         |
+| 必修   | `lib/models/board.dart`                                         | 添加 HyperBoard 子类                    |
+| 必修   | `lib/services/game_factory.dart`                                | createGameService + createGameGenerator |
+| 必修   | `lib/services/generation/index.dart`                            | export hyper_generator                  |
+| 必修   | `lib/models/generation_contracts.dart`                          | fromJson 添加 HyperBoard case           |
+| 必修   | `lib/main.dart`                                                 | 路由 + ViewModel + FinishScreen         |
+| 必修   | `lib/views/home/home_screen.dart`                               | 颜色 + 图标 + 描述                      |
+| 必修   | `lib/views/completion/completion_screen_factory.dart`           | 完成页 Board 类型映射                   |
+| 必修   | `assets/config/game_types.json`                                 | hyper 配置块                            |
+| 新建   | `lib/services/generation/hyper_generator.dart`                  | 实现 IGameGenerator                     |
+| 新建   | `assets/l10n/game_hyper_*.arb`                                  | 国际化资源                              |
+| 可选   | `lib/services/game_config.dart`                                 | 默认配置、图标映射                      |
+| 可选   | `lib/services/game_validator.dart`                              | 特殊验证规则（如有）                    |
+| 可选   | `lib/views/boards/nine_by_nine/nine_by_nine_board_painter.dart` | 特殊绘制逻辑（如有）                    |
+| 可选   | `assets/config/difficulty_config.json`                          | 难度参数配置                            |
 
 ---
 
 ## 六、注意事项
 
-1. **Isolate 兼容**：生成器在 Isolate 中运行，新类型的所有依赖必须可序列化。`GenerationResult.toJson()/fromJson()` 必须支持新的 Board 子类。
+1. **Isolate 兼容**：生成器在 Isolate 中运行，新类型的所有依赖必须可序列化。`GenerationResult.toJson()/fromJson()`
+   必须支持新的 Board 子类。
 
-2. **isFixed 管理**：生成过程中所有格子的 `isFixed` 必须保持 `false`，只在最终返回前统一标记有数字的格子为 `isFixed=true`。
+2. **isFixed 管理**：生成过程中所有格子的 `isFixed` 必须保持 `false`，只在最终返回前统一标记有数字的格子为
+   `isFixed=true`。
 
-3. **regions 是验证基础**：`GameValidator` 完全依赖 `Board.regions` 做区域唯一性验证，新类型的 `createRegions()` 必须正确创建所有约束区域。
+3. **regions 是验证基础**：`GameValidator` 完全依赖 `Board.regions` 做区域唯一性验证，新类型的 `createRegions()`
+   必须正确创建所有约束区域。
 
-4. **DiggingConfig 参数**：挖空算法用 `config.maxFilledCells` 作为目标填充数，必须确保该值小于子盘的实际填充数，否则挖空不会执行。
+4. **DiggingConfig 参数**：挖空算法用 `config.maxFilledCells`
+   作为目标填充数，必须确保该值小于子盘的实际填充数，否则挖空不会执行。
 
 5. **GameType 的 switch 分支**分布在 8+ 个文件中，添加新类型时需逐一检查。建议全局搜索 `GameType` 确保不遗漏。
 
-6. **响应式布局**：首页使用 `PageView` + `LayoutBuilder` 实现自适应，横屏 3 列（3×2），竖屏 2 列（2×3）。新游戏类型会自动出现在网格中。
+6. **响应式布局**：首页使用 `PageView` + `LayoutBuilder`
+   实现自适应，横屏 3 列（3×2），竖屏 2 列（2×3）。新游戏类型会自动出现在网格中。
 
 ---
 
@@ -320,72 +345,83 @@ case 'HyperBoard':
 
 ### Models 层
 
-| 文件                    | 主要类                                                                 | 职责                           |
-|-------------------------|------------------------------------------------------------------------|--------------------------------|
-| `board.dart`            | Board, StandardBoard, DiagonalBoard, WindowBoard, JigsawBoard, KillerBoard, SamuraiBoard | 棋盘抽象基类及所有子类         |
-| `cell.dart`             | Cell                                                                   | 单元格模型                     |
-| `region.dart`           | RegionType, Region, RegionCollectionUtils                              | 区域模型与工具                 |
-| `game_type.dart`        | GameType, GameTypeConfig, GameTypeConfigFactory                        | 游戏类型枚举与配置             |
-| `game_state.dart`       | GameState<B>                                                           | 游戏整体状态                   |
-| `difficulty.dart`       | Difficulty, DifficultyConfig                                           | 难度等级定义                   |
-| `generation_contracts.dart` | IGameGenerator, GenerationResult, DiggingConfig                   | 生成器接口与契约               |
-| `strategy.dart`         | StrategyType, StrategyInfo                                             | 解题策略元数据                 |
-| `killer_cage.dart`      | KillerCage                                                             | 杀手数独笼子模型               |
-| `game_stats.dart`       | GameStats                                                              | 游戏统计数据                   |
-| `*_constants.dart`      | *Constants                                                             | 各游戏类型常量                 |
+| 文件                        | 主要类                                                                                   | 职责                   |
+| --------------------------- | ---------------------------------------------------------------------------------------- | ---------------------- |
+| `board.dart`                | Board, StandardBoard, DiagonalBoard, WindowBoard, JigsawBoard, KillerBoard, SamuraiBoard | 棋盘抽象基类及所有子类 |
+| `cell.dart`                 | Cell                                                                                     | 单元格模型             |
+| `region.dart`               | RegionType, RegionTypeExtension, Region                                                  | 区域模型与扩展         |
+| `game_type.dart`            | GameType, GameTypeConfig, GameTypeConfigFactory                                          | 游戏类型枚举与配置     |
+| `game_state.dart`           | `GameState<B>`                                                                           | 游戏整体状态           |
+| `difficulty.dart`           | Difficulty, DifficultyConfig                                                             | 难度等级定义           |
+| `generation_contracts.dart` | IGameGenerator, GenerationResult, DiggingConfig                                          | 生成器接口与契约       |
+| `strategy.dart`             | StrategyType, StrategyInfo                                                               | 解题策略元数据         |
+| `killer_cage.dart`          | KillerCage                                                                               | 杀手数独笼子模型       |
+| `board_commands.dart`       | BoardCommand 及具体命令                                                                  | 棋盘操作命令           |
+| `contracts.dart`            | 游戏动作与提示结果契约                                                                   | 跨层数据契约           |
+| `coordinate_utils.dart`     | CoordinateUtils                                                                          | 坐标换算工具           |
+| `*_constants.dart`          | *Constants                                                                               | 各游戏类型常量         |
 
 ### Services 层
 
-| 文件                        | 主要类                  | 职责                               |
-|-----------------------------|-------------------------|------------------------------------|
-| `game_service.dart`         | GameService<B>          | 游戏状态管理、用户操作、生成协调    |
-| `game_factory.dart`         | GameFactory             | 创建 GameService 和 Generator      |
-| `game_config.dart`          | GameConfig              | JSON 配置加载                      |
-| `game_validator.dart`       | GameValidator           | 棋盘验证                           |
-| `game_logic.dart`           | GameLogic               | 游戏逻辑（显示答案等）             |
-| `game_storage_service.dart` | GameStorageService, SavedGameInfo | 游戏持久化                     |
-| `audio_manager.dart`        | AudioManager            | 音频播放管理                       |
-| `app_settings.dart`         | AppSettings             | 应用设置管理                       |
-| `history_manager.dart`      | HistoryManager          | 撤销/重做历史                      |
+| 文件                         | 主要类                            | 职责                             |
+| ---------------------------- | --------------------------------- | -------------------------------- |
+| `game_service.dart`          | `GameService<B>`                  | 游戏状态管理、用户操作、生成协调 |
+| `game_factory.dart`          | GameFactory                       | 创建 GameService 和 Generator    |
+| `game_config.dart`           | GameConfig                        | JSON 配置加载                    |
+| `game_validator.dart`        | GameValidator                     | 棋盘验证                         |
+| `game_storage_service.dart`  | GameStorageService, SavedGameInfo | 游戏持久化                       |
+| `audio_manager.dart`         | AudioManager                      | 音频播放管理                     |
+| `app_settings.dart`          | AppSettings                       | 应用设置管理                     |
+| `history_manager.dart`       | HistoryManager                    | 撤销/重做历史                    |
+| `session_statistics.dart`    | SessionStatistics                 | 当前局统计数据                   |
+| `timer.dart`                 | GameTimer                         | 游戏计时                         |
+| `statistics/statistics.dart` | Statistics, BestScoreRecord       | 持久统计与最佳成绩模型           |
 
 ### Generation 子模块
 
-| 文件                          | 主要类                     | 职责                           |
-|-------------------------------|----------------------------|--------------------------------|
-| `puzzle_generator.dart`       | PuzzleGenerator            | 生成门面（模板加载 + Isolate 调度） |
-| `game_generator.dart`         | GameGenerator              | 生成器注册分发                 |
-| `digging_algorithm.dart`      | DiggingAlgorithm, SmartRandomDiggingAlgorithm | 挖空算法                 |
-| `isolate_game_generator.dart` | IsolateGameGenerator       | Isolate 生成执行               |
-| `message_protocol.dart`       | IsolateMessage             | Isolate 通信协议               |
-| `template_manager.dart`       | TemplateManager            | 模板加载管理                   |
-| `*_generator.dart`            | *Generator                 | 各类型专用生成器               |
+| 文件                          | 主要类                                        | 职责                                |
+| ----------------------------- | --------------------------------------------- | ----------------------------------- |
+| `puzzle_generator.dart`       | PuzzleGenerator                               | 生成门面（模板加载 + Isolate 调度） |
+| `game_generator.dart`         | GameGenerator                                 | 生成器注册分发                      |
+| `digging_algorithm.dart`      | DiggingAlgorithm, SmartRandomDiggingAlgorithm | 挖空算法                            |
+| `isolate_game_generator.dart` | IsolateGameGenerator                          | Isolate 生成执行                    |
+| `message_protocol.dart`       | IsolateMessage                                | Isolate 通信协议                    |
+| `template_manager.dart`       | TemplateManager                               | 模板加载管理                        |
+| `*_generator.dart`            | *Generator                                    | 各类型专用生成器                    |
 
 ### Solving 子模块
 
-| 文件                          | 主要类                     | 职责                           |
-|-------------------------------|----------------------------|--------------------------------|
-| `strategy_engine.dart`        | StrategyService, StrategyRegistry | 策略注册与执行                 |
-| `candidate_calculator.dart`   | CandidateCalculator, BoardContext | 候选数计算                     |
-| `solvers/bit_solver.dart`     | BitSolver                  | 位掩码解计数                   |
-| `solvers/dlx_solver.dart`     | DLXSudokuSolver            | DLX 求解器                     |
-| `strategies/solving_strategies.dart` | 9 种策略类             | 人类解题策略                   |
+| 文件                                 | 主要类                            | 职责           |
+| ------------------------------------ | --------------------------------- | -------------- |
+| `strategy_engine.dart`               | StrategyService, StrategyRegistry | 策略注册与执行 |
+| `candidate_calculator.dart`          | CandidateCalculator, BoardContext | 候选数计算     |
+| `solvers/bit_solver.dart`            | BitSolver                         | 位掩码解计数   |
+| `solvers/dlx_solver.dart`            | DLXSudokuSolver                   | DLX 求解器     |
+| `strategies/solving_strategies.dart` | 9 种策略类                        | 人类解题策略   |
 
 ### Views 层
 
-| 文件                                   | 主要类                  | 职责                               |
-|----------------------------------------|-------------------------|------------------------------------|
-| `home_page.dart`                       | HomeScreen              | 首页（游戏类型 + 难度选择）         |
-| `game_page.dart`                       | GameScreen<B>           | 游戏页面                           |
-| `completion_page.dart`                 | FinishScreen            | 完成页面                           |
-| `custom_game_page.dart`                | CustomGameScreen        | 自定义游戏页面                     |
-| `settings_page.dart`                   | SettingsScreen          | 设置页面                           |
-| `statistics_page.dart`                 | GameStatisticsScreen    | 统计页面                           |
-| `components/boards/game_board_widget.dart` | UnifiedBoardWidget    | 统一棋盘组件                       |
-| `components/boards/samurai_board_widget.dart` | SamuraiBoardWidget | 武士棋盘组件                       |
-| `components/function_keyboard.dart`    | FunctionKeyboard        | 功能键盘                           |
-| `components/number_keyboard.dart`      | NumberKeyboard          | 数字键盘                           |
-| `components/top_toolbar.dart`          | TopToolbar              | 顶部工具栏                         |
-| `components/stats_bar.dart`            | StatsBar                | 状态栏                             |
+| 文件                                                  | 主要类                              | 职责                     |
+| ----------------------------------------------------- | ----------------------------------- | ------------------------ |
+| `home/home_screen.dart`                               | HomeScreen                          | 首页与游戏选择           |
+| `game/game_screen.dart`                               | `GameScreen<B>`                     | 游戏页编排               |
+| `game/game_board_area.dart`                           | `GameBoardArea<B>`                  | 棋盘与键盘布局           |
+| `game/game_header_bar.dart`                           | GameHeaderBar                       | 游戏页标题栏             |
+| `game/game_stats_bar.dart`                            | `GameStatsBar<B>`                   | 游戏状态栏               |
+| `completion/completion_screen.dart`                   | CompletionScreen                    | 游戏完成页               |
+| `completion/completion_screen_factory.dart`           | CompletionScreenFactory             | 按游戏类型创建完成页     |
+| `custom_game/custom_game_screen.dart`                 | CustomGameScreen                    | 自定义游戏页             |
+| `settings/settings_screen.dart`                       | SettingsScreen                      | 设置页                   |
+| `statistics/statistics_screen.dart`                   | StatisticsScreen                    | 统计页                   |
+| `statistics/tabs/*.dart`                              | 各统计 Tab Widget                   | 统计页专属内容           |
+| `boards/board_widget_base.dart`                       | `BoardWidgetBase<T>`                | Samurai 棋盘共用交互基类 |
+| `boards/nine_by_nine/nine_by_nine_board_widget.dart`  | NineByNineBoardWidget               | 9x9 数独变体棋盘         |
+| `boards/nine_by_nine/nine_by_nine_board_painter.dart` | NineByNineBoardPainter              | 9x9 棋盘绘制             |
+| `boards/nine_by_nine/board_tap_resolver.dart`         | BoardTapResolver                    | 点击坐标到单元格的解析   |
+| `boards/samurai/`                                     | SamuraiBoardWidget 等               | Samurai 棋盘及其视图     |
+| `components/keyboards/`                               | FunctionKeyboard, NumberKeyboard 等 | 跨页面键盘组件           |
+| `components/dialogs/`                                 | GameLoadingDialog 等                | 通用对话框组件           |
+| `components/common/`                                  | BasePageLayout 等                   | 跨页面基础 UI            |
 
 ---
 
@@ -393,24 +429,27 @@ case 'HyperBoard':
 
 ### 环境要求
 
-- Flutter 3.0+ 
-- Dart 3.0+ 
+- Flutter SDK（需支持项目指定的 Dart 版本）
+- Dart SDK `^3.11.4`
 - Android Studio 或 VS Code
 
 ### 安装步骤
 
 1. 克隆项目
+
    ```bash
-   git clone https://github.com/TomnyJoo/sudoku_collection.git
-   cd sudoku_collection
+   git clone https://github.com/TomnyJoo/sudoku-flutter.git
+   cd sudoku-flutter
    ```
 
 2. 安装依赖
+
    ```bash
    flutter pub get
    ```
 
 3. 运行项目
+
    ```bash
    flutter run
    ```
@@ -447,16 +486,19 @@ case 'HyperBoard':
 ## 十一、特色功能
 
 ### 智能生成算法
+
 - 使用并行处理技术生成高质量的数独谜题
 - 确保每个谜题都有唯一解
 - 根据难度级别调整生成策略
 
 ### 游戏统计系统
+
 - 记录每个游戏类型的完成时间
 - 计算平均解题时间
 - 跟踪游戏完成率
 
 ### 响应式设计
+
 - 适配手机、平板等不同设备
 - 自适应屏幕方向
 - 优化触摸交互体验
@@ -479,9 +521,10 @@ case 'HyperBoard':
 
 ### 扩展方法使用
 
-本项目使用了Flutter的扩展方法（Extension Methods）来简化本地化资源的访问，同时也提供了一套完整的机制来支持添加新的游戏类型。
+本项目使用了Flutter的扩展方法（Extension
+Methods）来简化本地化资源的访问，同时也提供了一套完整的机制来支持添加新的游戏类型。
 
-#### 可用的扩展方法：
+#### 可用的扩展方法
 
 1. **BuildContext扩展**：
    - `context.appLocalizations`：获取通用本地化资源
@@ -490,15 +533,16 @@ case 'HyperBoard':
    - `context.currentLocaleCode`：获取当前语言代码
 
 2. **使用示例**：
+
    ```dart
    // 获取通用本地化资源
    final appLocalizations = context.appLocalizations;
    String appName = appLocalizations.appName;
-   
+
    // 获取游戏特定本地化资源
    final gameLocalizations = context.gameLocalizations;
    String gameTypeName = gameLocalizations.gameTypeStandardName;
-   
+
    // 获取当前语言代码
    String localeCode = context.currentLocaleCode;
    ```
@@ -511,7 +555,7 @@ case 'HyperBoard':
    - `LocalizationUtils.supportedLocales`：获取支持的语言列表
    - `LocalizationUtils.localizationDelegates`：获取本地化代理列表
 
-#### 添加新游戏类型时的操作步骤：
+#### 添加新游戏类型时的操作步骤
 
 1. **创建游戏本地化文件**：
    - 在 `lib/common/l10n/` 目录下创建新游戏类型的本地化文件，例如：
@@ -520,8 +564,10 @@ case 'HyperBoard':
    - 确保文件中包含必要的本地化键，如游戏名称、描述和规则
 
 2. **更新GameLocalizations类**：
-   - 在 `lib/common/l10n/game_localizations.dart` 文件中，在 `_loadGameLocalizations` 方法中添加新游戏类型的本地化文件路径
+   - 在 `lib/common/l10n/game_localizations.dart` 文件中，在 `_loadGameLocalizations`
+     方法中添加新游戏类型的本地化文件路径
    - 在 `GameLocalizations` 类中添加对应的getter方法，例如：
+
      ```dart
      String get gameTypeNewGameName => getString('gameTypeNewGameName') ?? 'New Game';
      String get gameTypeNewGameDescription => getString('gameTypeNewGameDescription') ?? 'New game description';
@@ -559,7 +605,26 @@ MIT License
 
 ## 十五、更新日志
 
+### v1.2.4
+
+- 修复上下布局（竖屏）数字键盘随机无响应：手机竖屏下棋盘与键盘宽度被撑满屏幕宽度，左右紧贴屏幕边缘，落入 Android 系统左右边缘返回手势区（约 20-40dp）。
+   点击左右列按钮（1/4/7、3/6/9）被系统判定为返回手势而取消，表现为有按压反馈但不落值；中间列按钮若手指触摸面积大也偶发受影响。左右布局键盘在右侧、不紧贴左边缘故正常。
+   现布局计算时扣除左右各 20dp 外边距，棋盘与键盘整体水平居中避开边缘手势区。
+- 修复点击已选中单元格时抛出 RangeError：handleCellTap 调用 selectCell(-1,-1) 取消选中，但 getCell(-1,-1) 越界抛异常，导致选中态无法清除；改用 clearSelection()
+- 修复尺寸估算与真实可用区域不一致：竖屏估算可用高度时未扣除状态栏高度，导致棋盘与键盘整体下移；现按 全屏高度 - 工具栏 - 状态栏 - 偏移 计算，并给 body 增加底部安全区作为防御
+- 修复数字键盘在答案模式、未选中单元格、选中固定单元格时外观仍为可用状态却静默丢弃输入的问题：以上状态键盘置灰，明确提示当前不可输入
+- 在输入链路关键静默点增加诊断日志，便于后续定位类似问题
+
+### v1.2.3
+
+- 修复布局溢出隐患：游戏区域高度原先用硬编码扣除值（gameAreaHeightOffset）估算统计栏高度，统计栏实际高度变化时（如系统字体放大）键盘会被定位到 Stack 边界外而无法命中点击；现改为在 Expanded 内部按真实约束计算布局
+- 修复键盘尺寸被向上钳制导致的溢出：keypadCellSize 与 boardPixelSize 在空间不足时原先被抬高到最小值，反而使键盘内容超出其容器；改为只取可用空间上限，保证内容始终不越界
+- 新增按指定方向强制计算布局的接口，确保内外层布局方向一致
+- 修复选中单元格状态校验：getSelectedCell 仅在存在唯一选中单元格时返回，避免状态异常时把输入写入与界面高亮不一致的单元格
+- 修复数字键盘快速连点导致的异步操作交错：增加输入防重入保护
+
 ### v1.2.2
+
 - 修复音效设置问题：应用启动时未将设置的音效开关同步到音频管理器，导致音效关闭后重启应用仍播放开始音效
 - 修复完成页点击"新游戏"卡死问题：加载对话框使用 await 导致死锁（对话框永远无法关闭）；同时导航未携带新游戏状态，新页面因无参数且无存档而显示空白棋盘
 - 修复存在错误单元格时仍判定游戏完成的问题：完成判断增加错误单元格检查
@@ -567,37 +632,44 @@ MIT License
 - 修复自动候选数模式下，通过提示按钮填入数字后未重新计算候选数的问题
 
 ### v1.2.1
+
 - 修复历史记录管理问题：当历史记录超过50条时，撤销操作会错误地撤销多步
 - 优化历史记录管理逻辑：从头部移除命令时，将这些命令的效果正确合并到初始棋盘状态中
 - 核心修复：在 HistoryManager.addCommand 方法中，正确处理超过最大历史记录限制的情况，确保 initialBoard 与保留的命令列表保持同步
 
 ### v1.2.0
+
 - 系统架构全面重构，更好适配配置式、模块化管理
 - 优化首页，增强用户体验
 - 优化提高代码质量
 
 ### v1.1.2
+
 - 修复优化难度控制系统，使用统一的难度控制策略
 - 整合最佳记录与游戏统计系统，优化完善统计功能
 - 优化提高代码质量
 
 ### v1.1.1
+
 - 修复最佳记录管理问题
 - 修复viewmodel单例模式问题，改为随页面变化而销毁
 - 优化横屏模式下布局
 
 ### v1.1.0
+
 - 配置化、模块化的整体架构调整，便于扩展和维护
 - 本地化调整为手动管理，支持同语言多个arb文件
 - 统计功能重构及增强
 - 代码优化，提高性能和可维护性
 
 ### v1.0.6
+
 - 优化提示服务，直接填入答案
 - 清理无用代码
 - 优化代码组织结构，提高可维护性
 
 ### v1.0.5
+
 - 修复武士数独游戏完成后出现红屏错误
 - 统一所有游戏完成页面的实现方式和页面导航方式
 - 修正杀手数独用时计算错误问题，统一所有游戏的计时方式
@@ -605,24 +677,29 @@ MIT License
 - 优化武士数独候选数计算性能,采用局部计算
 
 ### v1.0.4
+
 - 进一步系统化修复候选数计算问题（复杂工程）
 
 ### v1.0.3
+
 - 修复杀手数独游戏完成检查逻辑的问题
 - 清理杀手数独视图模型中不必要的方法重写
 - 修复提示功能填入数字后自动计算候选数问题
 - 修复清除单元格值后自动标记模式未重新计算候选数的问题
 
 ### v1.0.2
+
 - 修复所有候选数计算问题
 - 整合杀手数独候选数计算到通用逻辑
 
 ### v1.0.1
+
 - 修复游戏完成后没有结束游戏的问题
 - 修复提示服务对话框点击"应用"按钮后没有填入提示数字的问题
 - 修复窗口数独窗口区域定义和使用逻辑不统一导致的系列问题
 
 ### v1.0.0
+
 - 初始版本发布
 - 支持6种数独类型
 - 实现基本游戏功能

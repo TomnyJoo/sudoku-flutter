@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sudoku/index.dart';
 
+import 'keyboard_grid.dart';
+
 class NumberKeyboard extends StatefulWidget {
   const NumberKeyboard({
     required this.onNumberSelected,
@@ -22,34 +24,13 @@ class _NumberKeyboardState extends State<NumberKeyboard> {
   @override
   Widget build(final BuildContext context) {
     final buttonSize = widget.buttonSize;
-    const spacing = AppConstants.keyboardButtonSpacing;
-    const padding = AppConstants.keyboardPadding;
 
-    return Container(
-      padding: const EdgeInsets.all(padding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(3, (final row) => Padding(
-            padding: EdgeInsets.only(
-              bottom: row < 2 ? spacing : 0,
-            ),
-            child: SizedBox(
-              height: buttonSize,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (final col) {
-                  final number = row * 3 + col + 1;
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      right: col < 2 ? spacing : 0,
-                    ),
-                    child: _buildButton(number, number.toString(), buttonSize),
-                  );
-                }),
-              ),
-            ),
-          )),
-      ),
+    return KeyboardGrid(
+      buttonSize: buttonSize,
+      buttonBuilder: (index) {
+        final number = index + 1;
+        return _buildButton(number, number.toString(), buttonSize);
+      },
     );
   }
 

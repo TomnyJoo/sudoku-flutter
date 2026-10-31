@@ -7,9 +7,12 @@ import 'package:sudoku/models/region.dart';
 /// 数独棋盘抽象基类，封装棋盘状态和操作，提供统一的接口，支持不同类型的数独游戏（标准、锯齿、对角线等）
 abstract class Board {
   /// 构造棋盘模型
-  Board({required this.size, required List<List<Cell>> cells, final List<Region>? regions})
-    : cells = cells.map(List<Cell>.unmodifiable).toList(),
-      regions = regions ?? [] {
+  Board({
+    required this.size,
+    required List<List<Cell>> cells,
+    final List<Region>? regions,
+  }) : cells = cells.map(List<Cell>.unmodifiable).toList(),
+       regions = regions ?? [] {
     // 验证棋盘尺寸
     if (size <= 0) {
       final errorMsg = '棋盘尺寸必须大于0: $size';
@@ -39,46 +42,56 @@ abstract class Board {
   }
 
   /// 从JSON创建单元格矩阵
-  static List<List<Cell>> cellsFromJson(List<dynamic> cellsJson) => 
-    cellsJson.map((row) {
-      final rowList = row as List;
-      return rowList
-          .map((cellJson) => Cell.fromJson(cellJson as Map<String, dynamic>))
-          .toList();
-    }).toList();
+  static List<List<Cell>> cellsFromJson(List<dynamic> cellsJson) =>
+      cellsJson.map((row) {
+        final rowList = row as List;
+        return rowList
+            .map((cellJson) => Cell.fromJson(cellJson as Map<String, dynamic>))
+            .toList();
+      }).toList();
 
   static List<Region> regionsFromJson(List<dynamic>? regionsJson) {
     if (regionsJson != null && regionsJson.isNotEmpty) {
       return regionsJson
-          .map((regionJson) => Region.fromJson(regionJson as Map<String, dynamic>))
+          .map(
+            (regionJson) => Region.fromJson(regionJson as Map<String, dynamic>),
+          )
           .toList();
     }
     return [];
   }
 
-  static List<Region> syncRegionCells(List<Region> regions, List<List<Cell>> cells) => 
-    regions.map((region) {
-      final newRegionCells = region.cells
-          .map((cell) => cells[cell.row][cell.col])
-          .toList();
-      return Region(
-        id: region.id,
-        type: region.type,
-        name: region.name,
-        cells: newRegionCells,
-      );
-    }).toList();
+  static List<Region> syncRegionCells(
+    List<Region> regions,
+    List<List<Cell>> cells,
+  ) => regions.map((region) {
+    final newRegionCells = region.cells
+        .map((cell) => cells[cell.row][cell.col])
+        .toList();
+    return Region(
+      id: region.id,
+      type: region.type,
+      name: region.name,
+      cells: newRegionCells,
+    );
+  }).toList();
 
   /// 创建空的单元格矩阵
-  static List<List<Cell>> createEmptyCells(int size) => 
-    List<List<Cell>>.generate(
-      size,
-      (i) => List<Cell>.generate(size, (j) => Cell(row: i, col: j)),
-    );
+  static List<List<Cell>> createEmptyCells(int size) =>
+      List<List<Cell>>.generate(
+        size,
+        (i) => List<Cell>.generate(size, (j) => Cell(row: i, col: j)),
+      );
 
-  final int size; /// 棋盘尺寸（通常为9）
-  final List<List<Cell>> cells; /// 棋盘单元格矩阵（行优先）
-  final List<Region> regions; /// 区域集合（用于区域验证）
+  final int size;
+
+  /// 棋盘尺寸（通常为9）
+  final List<List<Cell>> cells;
+
+  /// 棋盘单元格矩阵（行优先）
+  final List<Region> regions;
+
+  /// 区域集合（用于区域验证）
 
   /// 获取游戏类型标识符（子类可覆盖）
   String get gameType => '';
@@ -149,16 +162,29 @@ abstract class Board {
 
   /// 选择单元格
   Board selectCell(final int row, final int col) {
-    // 先清除所有选择状态
-    final clearedBoard = _clearAllSelection();
-
-    // 设置新选择状态
-    final cell = clearedBoard.getCell(row, col);
-    final newCell = cell.copyWith(isSelected: true);
-
-    // 设置高亮状态
-    final highlightedBoard = clearedBoard._updateCell(row, col, newCell);
-    return highlightedBoard._updateHighlights(row, col);
+    getCell(row, col);
+    final newCells = List<List<Cell>>.generate(
+      size,
+      (rowIndex) => List<Cell>.generate(size, (colIndex) {
+        final cell = cells[rowIndex][colIndex];
+        return cell.copyWith(
+          isSelected: rowIndex == row && colIndex == col,
+          isHighlighted: _shouldHighlightCell(cell, row, col),
+        );
+      }),
+    );
+    final newRegions = regions.map((region) {
+      final newRegionCells = region.cells
+          .map((cell) => newCells[cell.row][cell.col])
+          .toList();
+      return Region(
+        id: region.id,
+        type: region.type,
+        name: region.name,
+        cells: newRegionCells,
+      );
+    }).toList();
+    return createInstance(newCells, regions: newRegions);
   }
 
   /// 清除所有选择状态
@@ -269,7 +295,11 @@ abstract class Board {
 
     final newRegions = regions.map((region) {
       final newRegionCells = region.cells
-          .map((cell) => cell.row == row && cell.col == col ? newCell : newCells[cell.row][cell.col])
+          .map(
+            (cell) => cell.row == row && cell.col == col
+                ? newCell
+                : newCells[cell.row][cell.col],
+          )
           .toList();
       return Region(
         id: region.id,
@@ -290,39 +320,6 @@ abstract class Board {
               .map(
                 (final cell) =>
                     cell.copyWith(isSelected: false, isHighlighted: false),
-              )
-              .toList(),
-        )
-        .toList();
-
-    final newRegions = regions.map((region) {
-      final newRegionCells = region.cells
-          .map((cell) => newCells[cell.row][cell.col])
-          .toList();
-      return Region(
-        id: region.id,
-        type: region.type,
-        name: region.name,
-        cells: newRegionCells,
-      );
-    }).toList();
-
-    return createInstance(newCells, regions: newRegions);
-  }
-
-  /// 更新高亮状态
-  Board _updateHighlights(final int selectedRow, final int selectedCol) {
-    final newCells = cells
-        .map(
-          (final row) => row
-              .map(
-                (final cell) => cell.copyWith(
-                  isHighlighted: _shouldHighlightCell(
-                    cell,
-                    selectedRow,
-                    selectedCol,
-                  ),
-                ),
               )
               .toList(),
         )
@@ -448,9 +445,8 @@ abstract class Board {
   });
 
   /// 创建所有区域（包括通用区域和特殊区域）,子类必须实现此方法，确保区域创建的统一性
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) => createDefaultRegions(); // 默认实现：创建通用区域（行、列）
+  List<Region> createRegions({Map<String, dynamic>? templateData}) =>
+      createDefaultRegions(); // 默认实现：创建通用区域（行、列）
 
   /// 创建默认的行和列区域
   List<Region> createDefaultRegions() {
@@ -493,7 +489,7 @@ abstract class Board {
   }) {
     final actualBlockSize = blockSize ?? sqrt(size).toInt();
     final regions = <Region>[];
-    
+
     for (int blockRow = 0; blockRow < actualBlockSize; blockRow++) {
       for (int blockCol = 0; blockCol < actualBlockSize; blockCol++) {
         final blockCells = <Cell>[];
@@ -511,14 +507,15 @@ abstract class Board {
             Region(
               id: '${regionPrefix}_${blockRow}_$blockCol',
               type: regionType,
-              name: '${regionPrefix[0].toUpperCase()}${regionPrefix.substring(1)} ${blockRow}_$blockCol',
+              name:
+                  '${regionPrefix[0].toUpperCase()}${regionPrefix.substring(1)} ${blockRow}_$blockCol',
               cells: blockCells,
             ),
           );
         }
       }
     }
-    
+
     return regions;
   }
 
@@ -538,11 +535,7 @@ class StandardBoard extends Board {
     required int size,
     required List<List<Cell>> cells,
     List<Region>? regions,
-  }) : super(
-         size: size,
-         cells: cells,
-         regions: regions,
-       );
+  }) : super(size: size, cells: cells, regions: regions);
 
   @override
   String get gameType => 'standard';
@@ -571,11 +564,8 @@ class StandardBoard extends Board {
   }) => StandardBoard(size: size, cells: newCells, regions: regions);
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) {
-    final regions = createDefaultRegions()
-    ..addAll(createBlockRegions());
+  List<Region> createRegions({Map<String, dynamic>? templateData}) {
+    final regions = createDefaultRegions()..addAll(createBlockRegions());
     return regions;
   }
 
@@ -594,11 +584,7 @@ class DiagonalBoard extends Board {
     required int size,
     required List<List<Cell>> cells,
     List<Region>? regions,
-  }) : super(
-         size: size,
-         cells: cells,
-         regions: regions,
-       );
+  }) : super(size: size, cells: cells, regions: regions);
 
   @override
   String get gameType => 'diagonal';
@@ -625,23 +611,16 @@ class DiagonalBoard extends Board {
   DiagonalBoard createInstance(
     List<List<Cell>> newCells, {
     List<Region>? regions,
-  }) => DiagonalBoard(
-      size: size,
-      cells: newCells,
-      regions: regions,
-    );
+  }) => DiagonalBoard(size: size, cells: newCells, regions: regions);
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) {
+  List<Region> createRegions({Map<String, dynamic>? templateData}) {
     final regions = createDefaultRegions()
-    ..addAll(createBlockRegions())
-    
-    // 添加对角线区域
-    ..add(_createMainDiagonalRegion())
-    ..add(_createAntiDiagonalRegion());
-    
+      ..addAll(createBlockRegions())
+      // 添加对角线区域
+      ..add(_createMainDiagonalRegion())
+      ..add(_createAntiDiagonalRegion());
+
     return regions;
   }
 
@@ -689,11 +668,7 @@ class WindowBoard extends Board {
     required int size,
     required List<List<Cell>> cells,
     List<Region>? regions,
-  }) : super(
-         size: size,
-         cells: cells,
-         regions: regions,
-       );
+  }) : super(size: size, cells: cells, regions: regions);
 
   @override
   String get gameType => 'window';
@@ -719,32 +694,30 @@ class WindowBoard extends Board {
   WindowBoard createInstance(
     List<List<Cell>> newCells, {
     List<Region>? regions,
-  }) => WindowBoard(
-      size: size,
-      cells: newCells,
-      regions: regions,
-    );
+  }) => WindowBoard(size: size, cells: newCells, regions: regions);
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) {
+  List<Region> createRegions({Map<String, dynamic>? templateData}) {
     final regions = createDefaultRegions()
-    ..addAll(createBlockRegions())
-    ..addAll(_createWindowRegions());
-    
+      ..addAll(createBlockRegions())
+      ..addAll(_createWindowRegions());
+
     return regions;
   }
 
   /// 创建窗口区域
   List<Region> _createWindowRegions() {
     final windows = <Region>[];
-    
+
     // 窗口区域直接使用定义的索引，不需要转换
     for (final windowRegion in WindowConstants.windowRegions) {
       final windowCells = <Cell>[];
       for (int row = windowRegion.startRow; row <= windowRegion.endRow; row++) {
-        for (int col = windowRegion.startCol; col <= windowRegion.endCol; col++) {
+        for (
+          int col = windowRegion.startCol;
+          col <= windowRegion.endCol;
+          col++
+        ) {
           windowCells.add(cells[row][col]);
         }
       }
@@ -757,7 +730,7 @@ class WindowBoard extends Board {
         ),
       );
     }
-    
+
     return windows;
   }
 
@@ -772,15 +745,19 @@ class WindowBoard extends Board {
   @override
   Map<String, dynamic> toJson() => {
     'size': size,
-    'cells': cells.map((row) => row.map((cell) => cell.toJson()).toList()).toList(),
+    'cells': cells
+        .map((row) => row.map((cell) => cell.toJson()).toList())
+        .toList(),
     'regions': regions.map((region) => region.toJson()).toList(),
   };
 
   /// 检查指定位置是否在窗口区域内
   bool isInWindowRegion(int row, int col) {
     for (final windowRegion in WindowConstants.windowRegions) {
-      if (row >= windowRegion.startRow && row <= windowRegion.endRow &&
-          col >= windowRegion.startCol && col <= windowRegion.endCol) {
+      if (row >= windowRegion.startRow &&
+          row <= windowRegion.endRow &&
+          col >= windowRegion.startCol &&
+          col <= windowRegion.endCol) {
         return true;
       }
     }
@@ -790,8 +767,10 @@ class WindowBoard extends Board {
   /// 获取指定位置所属的窗口区域ID
   String? getWindowRegionId(int row, int col) {
     for (final windowRegion in WindowConstants.windowRegions) {
-      if (row >= windowRegion.startRow && row <= windowRegion.endRow &&
-          col >= windowRegion.startCol && col <= windowRegion.endCol) {
+      if (row >= windowRegion.startRow &&
+          row <= windowRegion.endRow &&
+          col >= windowRegion.startCol &&
+          col <= windowRegion.endCol) {
         return windowRegion.id;
       }
     }
@@ -891,7 +870,8 @@ class JigsawBoard extends Board {
   ///
   /// 性能：O(1) - 直接查缓存
   /// 对比优化前：O(81) - 遍历整个矩阵
-  List<(int, int)> getRegionCellCoordinates(int regionId) => regionIndexCache[regionId] ?? [];
+  List<(int, int)> getRegionCellCoordinates(int regionId) =>
+      regionIndexCache[regionId] ?? [];
 
   /// 快速获取指定区域的单元格对象列表
   List<Cell> getRegionCells(int regionId) {
@@ -909,9 +889,7 @@ class JigsawBoard extends Board {
   }
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) {
+  List<Region> createRegions({Map<String, dynamic>? templateData}) {
     if (_cachedRegions != null) {
       return _cachedRegions!;
     }
@@ -948,24 +926,20 @@ class JigsawBoard extends Board {
     List<List<Cell>> newCells, {
     List<Region>? regions,
   }) => JigsawBoard(
-      size: size,
-      cells: newCells,
-      regions: regions,
-      regionMatrix: regionMatrix,
-      // 注意：不传递 _regionIndexCache 和 _cachedRegions
-      // 因为 cells 已改变，需要重新构建
-    );
+    size: size,
+    cells: newCells,
+    regions: regions,
+    regionMatrix: regionMatrix,
+    // 注意：不传递 _regionIndexCache 和 _cachedRegions
+    // 因为 cells 已改变，需要重新构建
+  );
 
   static JigsawBoard empty({int size = 9, List<List<int>>? regionMatrix}) {
     final cells = List<List<Cell>>.generate(
       size,
       (i) => List<Cell>.generate(size, (j) => Cell(row: i, col: j)),
     );
-    return JigsawBoard(
-      size: size,
-      cells: cells,
-      regionMatrix: regionMatrix,
-    );
+    return JigsawBoard(size: size, cells: cells, regionMatrix: regionMatrix);
   }
 
   @override
@@ -987,11 +961,7 @@ class KillerBoard extends Board {
     List<Region>? regions,
     List<KillerCage>? cages,
   }) : cages = cages ?? [],
-       super(
-         size: size,
-         cells: cells,
-         regions: regions,
-       );
+       super(size: size, cells: cells, regions: regions);
 
   @override
   String get gameType => 'killer';
@@ -1009,7 +979,8 @@ class KillerBoard extends Board {
     final regionsJson = json['regions'] as List?;
     List<Region>? regions;
     if (regionsJson != null && regionsJson.isNotEmpty) {
-      regions = regionsJson.map(
+      regions = regionsJson
+          .map(
             (regionJson) => Region.fromJson(regionJson as Map<String, dynamic>),
           )
           .toList();
@@ -1017,22 +988,40 @@ class KillerBoard extends Board {
     }
 
     final cagesJson = json['cages'] as List?;
-    final cages = cagesJson
-        ?.map(
-          (cageJson) => KillerCage.fromJson(cageJson as Map<String, dynamic>),
-        )
-        .toList() ?? [];
+    final cages =
+        cagesJson
+            ?.map(
+              (cageJson) =>
+                  KillerCage.fromJson(cageJson as Map<String, dynamic>),
+            )
+            .toList() ??
+        [];
 
     if (regions == null || regions.isEmpty) {
-      final board = KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
+      final board = KillerBoard(
+        size: size,
+        cells: cells,
+        regions: regions,
+        cages: cages,
+      );
       regions = board.createRegions();
-      return KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
+      return KillerBoard(
+        size: size,
+        cells: cells,
+        regions: regions,
+        cages: cages,
+      );
     }
 
-    return KillerBoard(size: size, cells: cells, regions: regions, cages: cages);
+    return KillerBoard(
+      size: size,
+      cells: cells,
+      regions: regions,
+      cages: cages,
+    );
   }
   final List<KillerCage> cages;
-  
+
   // Cage查找缓存 - 提升性能
   Map<String, KillerCage>? _cageLookupCache;
   int? _cageLookupCacheHash;
@@ -1041,20 +1030,13 @@ class KillerBoard extends Board {
   KillerBoard createInstance(
     List<List<Cell>> newCells, {
     List<Region>? regions,
-  }) => KillerBoard(
-      size: size,
-      cells: newCells,
-      regions: regions,
-      cages: cages,
-    );
+  }) =>
+      KillerBoard(size: size, cells: newCells, regions: regions, cages: cages);
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) {
-    final regions = createDefaultRegions()
-    ..addAll(createBlockRegions());
-    
+  List<Region> createRegions({Map<String, dynamic>? templateData}) {
+    final regions = createDefaultRegions()..addAll(createBlockRegions());
+
     // 添加笼子区域
     for (final cage in cages) {
       final cageCells = <Cell>[];
@@ -1064,15 +1046,17 @@ class KillerBoard extends Board {
         }
       }
       if (cageCells.isNotEmpty) {
-        regions.add(Region(
-          id: 'cage_${cage.id}',
-          type: RegionType.cage,
-          name: 'Cage ${cage.sum}',
-          cells: cageCells,
-        ));
+        regions.add(
+          Region(
+            id: 'cage_${cage.id}',
+            type: RegionType.cage,
+            name: 'Cage ${cage.sum}',
+            cells: cageCells,
+          ),
+        );
       }
     }
-    
+
     return regions;
   }
 
@@ -1082,13 +1066,19 @@ class KillerBoard extends Board {
       (i) => List<Cell>.generate(size, (j) => Cell(row: i, col: j)),
     );
     final board = KillerBoard(size: size, cells: cells);
-    return KillerBoard(size: size, cells: cells, regions: board.createRegions());
+    return KillerBoard(
+      size: size,
+      cells: cells,
+      regions: board.createRegions(),
+    );
   }
 
   @override
   Map<String, dynamic> toJson() => {
     'size': size,
-    'cells': cells.map((row) => row.map((cell) => cell.toJson()).toList()).toList(),
+    'cells': cells
+        .map((row) => row.map((cell) => cell.toJson()).toList())
+        .toList(),
     'regions': regions.map((region) => region.toJson()).toList(),
     'cages': cages.map((cage) => cage.toJson()).toList(),
   };
@@ -1096,17 +1086,17 @@ class KillerBoard extends Board {
   KillerCage? getCageForCell(int row, int col) {
     // 使用缓存优化
     final cacheKey = '$row,$col';
-    
+
     // 检查缓存是否需要重建
     final currentHash = Object.hashAll(cages.map((c) => c.id));
     if (_cageLookupCache == null || _cageLookupCacheHash != currentHash) {
       _buildCageLookupCache();
       _cageLookupCacheHash = currentHash;
     }
-    
+
     return _cageLookupCache?[cacheKey];
   }
-  
+
   /// 构建cage查找缓存
   void _buildCageLookupCache() {
     _cageLookupCache = <String, KillerCage>{};
@@ -1183,20 +1173,17 @@ class KillerBoard extends Board {
     final selectedCell = newCells[row][col];
     final finalCells = newCells
         .map(
-          (final r) => r
-              .map(
-                (final c) {
-                  bool isHighlighted = false;
-                  if (selectedCell.value != null) {
-                    isHighlighted = c.value != null &&
-                        c.value == selectedCell.value &&
-                        c.row != row &&
-                        c.col != col;
-                  }
-                  return c.copyWith(isHighlighted: isHighlighted);
-                },
-              )
-              .toList(),
+          (final r) => r.map((final c) {
+            bool isHighlighted = false;
+            if (selectedCell.value != null) {
+              isHighlighted =
+                  c.value != null &&
+                  c.value == selectedCell.value &&
+                  c.row != row &&
+                  c.col != col;
+            }
+            return c.copyWith(isHighlighted: isHighlighted);
+          }).toList(),
         )
         .toList();
 
@@ -1231,7 +1218,12 @@ class SamuraiBoard extends Board {
 
   factory SamuraiBoard.fromJson(Map<String, dynamic> json) {
     final cellsJson = json['cells'] as List;
-    final cells = cellsJson.map((row) => (row as List).map((cellJson) => Cell.fromJson(cellJson)).toList()).toList();
+    final cells = cellsJson
+        .map(
+          (row) =>
+              (row as List).map((cellJson) => Cell.fromJson(cellJson)).toList(),
+        )
+        .toList();
 
     final regionsJson = json['regions'] as List?;
     if (regionsJson != null && regionsJson.isNotEmpty) {
@@ -1255,12 +1247,8 @@ class SamuraiBoard extends Board {
   SamuraiBoard._internal({
     required List<List<Cell>> cells,
     required List<Region> regions,
-  })  : assert(regions.isNotEmpty, 'Regions must not be empty'),
-       super(
-         size: boardSize,
-         cells: cells,
-         regions: regions,
-       );
+  }) : assert(regions.isNotEmpty, 'Regions must not be empty'),
+       super(size: boardSize, cells: cells, regions: regions);
   static const int boardSize = 21;
   static const int subGridSize = 9;
 
@@ -1285,12 +1273,19 @@ class SamuraiBoard extends Board {
       final (startRow, startCol) = subGridOffsets[i];
       regions.addAll(_createSubGridRegions(cells, startRow, startCol, i));
     }
-    assert(regions.length == 135, 'Expected 135 regions, got ${regions.length}');
+    assert(
+      regions.length == 135,
+      'Expected 135 regions, got ${regions.length}',
+    );
     return regions;
   }
 
   static List<Region> _createSubGridRegions(
-      List<List<Cell>> cells, int startRow, int startCol, int subGridIndex) {
+    List<List<Cell>> cells,
+    int startRow,
+    int startCol,
+    int subGridIndex,
+  ) {
     final regions = <Region>[];
 
     // 行区域（使用全局坐标）
@@ -1299,12 +1294,14 @@ class SamuraiBoard extends Board {
       for (int col = 0; col < subGridSize; col++) {
         rowCells.add(cells[startRow + row][startCol + col]);
       }
-      regions.add(Region(
-        id: 'subgrid_${subGridIndex}_row_$row',
-        type: RegionType.row,
-        name: 'SubGrid $subGridIndex Row $row',
-        cells: rowCells,
-      ));
+      regions.add(
+        Region(
+          id: 'subgrid_${subGridIndex}_row_$row',
+          type: RegionType.row,
+          name: 'SubGrid $subGridIndex Row $row',
+          cells: rowCells,
+        ),
+      );
     }
 
     // 列区域
@@ -1313,12 +1310,14 @@ class SamuraiBoard extends Board {
       for (int row = 0; row < subGridSize; row++) {
         colCells.add(cells[startRow + row][startCol + col]);
       }
-      regions.add(Region(
-        id: 'subgrid_${subGridIndex}_col_$col',
-        type: RegionType.column,
-        name: 'SubGrid $subGridIndex Column $col',
-        cells: colCells,
-      ));
+      regions.add(
+        Region(
+          id: 'subgrid_${subGridIndex}_col_$col',
+          type: RegionType.column,
+          name: 'SubGrid $subGridIndex Column $col',
+          cells: colCells,
+        ),
+      );
     }
 
     // 宫区域
@@ -1327,15 +1326,19 @@ class SamuraiBoard extends Board {
         final blockCells = <Cell>[];
         for (int i = 0; i < 3; i++) {
           for (int j = 0; j < 3; j++) {
-            blockCells.add(cells[startRow + blockRow * 3 + i][startCol + blockCol * 3 + j]);
+            blockCells.add(
+              cells[startRow + blockRow * 3 + i][startCol + blockCol * 3 + j],
+            );
           }
         }
-        regions.add(Region(
-          id: 'subgrid_${subGridIndex}_block_${blockRow}_$blockCol',
-          type: RegionType.block,
-          name: 'SubGrid $subGridIndex Block ${blockRow}_$blockCol',
-          cells: blockCells,
-        ));
+        regions.add(
+          Region(
+            id: 'subgrid_${subGridIndex}_block_${blockRow}_$blockCol',
+            type: RegionType.block,
+            name: 'SubGrid $subGridIndex Block ${blockRow}_$blockCol',
+            cells: blockCells,
+          ),
+        );
       }
     }
 
@@ -1352,26 +1355,29 @@ class SamuraiBoard extends Board {
   int getMaxNumber() => 9;
 
   @override
-  List<Region> createRegions({
-    Map<String, dynamic>? templateData,
-  }) => _createRegions(cells);
+  List<Region> createRegions({Map<String, dynamic>? templateData}) =>
+      _createRegions(cells);
 
   List<int> getSubGridsForCell(int row, int col) {
     final subGrids = <int>[];
     for (int i = 0; i < 5; i++) {
       final (startRow, startCol) = subGridOffsets[i];
-      if (row >= startRow && row < startRow + subGridSize &&
-          col >= startCol && col < startCol + subGridSize) {
+      if (row >= startRow &&
+          row < startRow + subGridSize &&
+          col >= startCol &&
+          col < startCol + subGridSize) {
         subGrids.add(i);
       }
     }
     return subGrids;
   }
 
-  bool isOverlapRegion(int row, int col) => getSubGridsForCell(row, col).length > 1;
+  bool isOverlapRegion(int row, int col) =>
+      getSubGridsForCell(row, col).length > 1;
 
   /// 检查单元格是否在可玩区域内（任意子网格中）
-  bool isPlayableCell(int row, int col) => getSubGridsForCell(row, col).isNotEmpty;
+  bool isPlayableCell(int row, int col) =>
+      getSubGridsForCell(row, col).isNotEmpty;
 
   /// 获取所有可玩区域内的空单元格
   @override
@@ -1442,14 +1448,14 @@ class SamuraiBoard extends Board {
       for (int j = 0; j < 9; j++) {
         final targetRow = startRow + i;
         final targetCol = startCol + j;
-        if (targetRow >= 0 && targetRow < boardSize &&
-            targetCol >= 0 && targetCol < boardSize) {
+        if (targetRow >= 0 &&
+            targetRow < boardSize &&
+            targetCol >= 0 &&
+            targetCol < boardSize) {
           final subCell = subBoard.getCell(i, j);
           if (subCell.value != null) {
-            newCells[targetRow][targetCol] = newCells[targetRow][targetCol].copyWith(
-              value: subCell.value,
-              isFixed: true,
-            );
+            newCells[targetRow][targetCol] = newCells[targetRow][targetCol]
+                .copyWith(value: subCell.value, isFixed: true);
           }
         }
       }
@@ -1464,8 +1470,9 @@ class SamuraiBoard extends Board {
     }
 
     final (startRow, startCol) = subGridOffsets[index];
-    final subGridCells = List.generate(subGridSize, (i) =>
-      List.generate(subGridSize, (j) {
+    final subGridCells = List.generate(
+      subGridSize,
+      (i) => List.generate(subGridSize, (j) {
         final original = cells[startRow + i][startCol + j];
         // 创建新 Cell，坐标映射到 0..8
         return Cell(
@@ -1477,21 +1484,27 @@ class SamuraiBoard extends Board {
           isSelected: original.isSelected,
           isError: original.isError,
         );
-      }));
+      }),
+    );
 
     // 创建一个标准数独板作为子网格
     return StandardBoard(size: subGridSize, cells: subGridCells);
   }
 
   static SamuraiBoard empty() {
-    final cells = List.generate(boardSize, (i) => List.generate(boardSize, (j) => Cell(row: i, col: j)));
+    final cells = List.generate(
+      boardSize,
+      (i) => List.generate(boardSize, (j) => Cell(row: i, col: j)),
+    );
     return SamuraiBoard(cells: cells);
   }
 
   @override
   Map<String, dynamic> toJson() => {
     'size': size,
-    'cells': cells.map((row) => row.map((cell) => cell.toJson()).toList()).toList(),
+    'cells': cells
+        .map((row) => row.map((cell) => cell.toJson()).toList())
+        .toList(),
     'regions': regions.map((region) => region.toJson()).toList(),
   };
 }

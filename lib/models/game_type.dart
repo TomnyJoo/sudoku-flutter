@@ -9,7 +9,15 @@ enum GameType {
   diagonal,    // 对角线数独
   window,      // 窗口数独
   killer,      // 杀手数独
-  samurai,     // 武士数独
+  samurai;     // 武士数独
+
+  static GameType fromName(String name) {
+    final normalizedName = name.toLowerCase();
+    for (final gameType in values) {
+      if (gameType.name == normalizedName) return gameType;
+    }
+    throw ArgumentError.value(name, 'name', 'Unknown game type');
+  }
 }
 
 /// 游戏类型配置，包含每种游戏类型的具体配置参数

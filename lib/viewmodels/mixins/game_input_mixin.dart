@@ -91,7 +91,7 @@ mixin GameInputMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
 
     // 如果点击的是已选中的单元格，取消选中
     if (cell.isSelected) {
-      final newBoard = gameState.board.selectCell(-1, -1);
+      final newBoard = gameState.board.clearSelection();
       gameState = gameService.updateBoard(gameState, newBoard as B);
       return;
     }

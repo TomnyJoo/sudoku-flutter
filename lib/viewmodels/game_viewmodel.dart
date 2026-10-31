@@ -13,7 +13,8 @@ class GameViewModel<B extends Board> extends ChangeNotifier
         GameLifecycleMixin<B, GameState<B>>,
         GameInputMixin<B, GameState<B>>,
         GameAssistMixin<B, GameState<B>>,
-        GamePersistenceMixin<B, GameState<B>> {
+        GamePersistenceMixin<B, GameState<B>>
+    implements GameMutationHost<B>, GameInputHost<B>, SamuraiModeHost<B> {
   /// 构造游戏视图模型
   ///
   /// [gameType] - 游戏类型标识符
@@ -27,16 +28,29 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     required B Function() createEmptyBoard,
     AppSettings? settings,
     List<List<int>>? regionMatrix,
+    GameValidator? validator,
   })  : _gameType = gameType,
         _createEmptyBoard = createEmptyBoard,
         _regionMatrix = regionMatrix,
         _gameService = GameService<B>(
           gameType: gameType,
-          validator: GameValidator(),
+          validator: validator ?? GameValidator(),
           boardFromJson: boardFromJson,
         ),
         _gameState = _createInitialState<B>(createEmptyBoard(), regionMatrix),
         _appSettings = settings {
+    _mutationController = GameMutationController<B>(
+      owner: this,
+      finalizeMutation: _finalizeBoardMutation,
+      onError: _handleError,
+    );
+    _bestScoreController = GameBestScoreController(
+      gameType: gameType,
+      onChanged: notifyListeners,
+    );
+    _inputController = GameInputController<B>(this);
+    _samuraiController = SamuraiModeController<B>(this);
+
     // 初始化游戏计时器
     _gameTimer = GameTimer(
       onTick: () {
@@ -62,16 +76,29 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     required GameState<B> initialState,
     AppSettings? settings,
     List<List<int>>? regionMatrix,
+    GameValidator? validator,
   })  : _gameType = gameType,
         _createEmptyBoard = createEmptyBoard,
         _regionMatrix = regionMatrix,
         _gameService = GameService<B>(
           gameType: gameType,
-          validator: GameValidator(),
+          validator: validator ?? GameValidator(),
           boardFromJson: boardFromJson,
         ),
         _gameState = initialState,
         _appSettings = settings {
+    _mutationController = GameMutationController<B>(
+      owner: this,
+      finalizeMutation: _finalizeBoardMutation,
+      onError: _handleError,
+    );
+    _bestScoreController = GameBestScoreController(
+      gameType: gameType,
+      onChanged: notifyListeners,
+    );
+    _inputController = GameInputController<B>(this);
+    _samuraiController = SamuraiModeController<B>(this);
+
     _gameTimer = GameTimer(
       onTick: () {
         if (!gameState.isCompleted) {
@@ -98,6 +125,18 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 游戏服务
   final GameService<B> _gameService;
 
+  /// 最佳成绩协调器
+  late final GameBestScoreController _bestScoreController;
+
+  /// 状态变更协调器
+  late final GameMutationController<B> _mutationController;
+
+  /// 用户输入控制器
+  late final GameInputController<B> _inputController;
+
+  /// Samurai 状态协调器
+  late final SamuraiModeController<B> _samuraiController;
+
   /// 应用设置
   AppSettings? _appSettings;
 
@@ -113,61 +152,29 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 游戏生成阶段
   GenerationStage _generationStage = GenerationStage.generatingSolution;
 
-  /// 缓存的当前难度最佳成绩
-  BestScoreRecord? _cachedBestScore;
-
-  /// 最佳成绩是否已加载完成
-  bool isBestScoreLoaded = false;
-
   // ========== Samurai 特有属性 ==========
 
-  /// 当前子网格索引（仅 Samurai 使用）
-  int _currentSubGridIndex = 4; // 默认显示中心网格
-
-  /// 是否概览模式（仅 Samurai 使用）
-  bool _isOverviewMode = false;
-
   /// 是否为 Samurai 游戏
+  @override
   bool get isSamuraiGame => _gameType == 'samurai';
 
   /// 当前子网格索引
-  int get currentSubGridIndex => _currentSubGridIndex;
+  int get currentSubGridIndex => _samuraiController.currentSubGridIndex;
 
   /// 是否概览模式
-  bool get isOverviewMode => _isOverviewMode;
+  bool get isOverviewMode => _samuraiController.isOverviewMode;
 
   /// 切换概览模式
-  void toggleOverviewMode() {
-    _isOverviewMode = !_isOverviewMode;
-    notifyListeners();
-  }
+  void toggleOverviewMode() => _samuraiController.toggleOverviewMode();
 
   /// 进入概览模式
-  void enterOverviewMode() {
-    if (!_isOverviewMode) {
-      _isOverviewMode = true;
-      notifyListeners();
-    }
-  }
+  void enterOverviewMode() => _samuraiController.enterOverviewMode();
 
   /// 退出概览模式
-  void exitOverviewMode() {
-    if (_isOverviewMode) {
-      _isOverviewMode = false;
-      notifyListeners();
-    }
-  }
+  void exitOverviewMode() => _samuraiController.exitOverviewMode();
 
   /// 切换子网格
-  Future<void> switchSubGrid(int index) async {
-    _currentSubGridIndex = index;
-    notifyListeners();
-
-    // 如果处于自动候选模式且游戏正在进行中，重新计算候选数
-    if (gameState.isAutoMarkMode && isPlaying) {
-      await autoMarkCandidates(visibleSubBoards: [index]);
-    }
-  }
+  Future<void> switchSubGrid(int index) async => _samuraiController.switchSubGrid(index);
 
   /// 创建初始游戏状态（静态方法）
   static GameState<B> _createInitialState<B extends Board>(
@@ -194,42 +201,23 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   }
 
   /// 获取当前难度的最佳成绩（从缓存）
-  BestScoreRecord? get cachedBestScore => _cachedBestScore;
+  BestScoreRecord? get cachedBestScore => _bestScoreController.cachedBestScore;
 
   /// 获取最佳成绩的显示时间
-  String? get bestScoreDisplayTime {
-    if (!isBestScoreLoaded) return null;
-    final score = _cachedBestScore;
-    if (score == null || score.time <= 0) return null;
-    return GameUtils.formatTime(score.time);
-  }
+  String? get bestScoreDisplayTime => _bestScoreController.displayTime;
 
   /// 获取最佳成绩的错误数（无记录时返回 null）
-  int? get bestScoreMistakes => _cachedBestScore?.mistakes;
+  int? get bestScoreMistakes => _bestScoreController.mistakes;
+
+  /// 最佳成绩是否已加载完成
+  bool get isBestScoreLoaded => _bestScoreController.isLoaded;
 
   /// 加载指定难度的最佳成绩
   @override
-  Future<void> loadBestScore([String? difficulty]) async {
-    try {
-      final targetDifficulty = difficulty ?? gameState.difficulty;
-      if (targetDifficulty.isEmpty) {
-        _cachedBestScore = null;
-        isBestScoreLoaded = true;
-        notifyListeners();
-        return;
-      }
-      final stats = await StatisticsManager.getGameStatistics(gameService.gameType);
-      final difficultyStats = stats.difficultyStats[targetDifficulty];
-      _cachedBestScore = difficultyStats?.bestScoreRecord;
-      isBestScoreLoaded = true;
-      notifyListeners();
-    } catch (e, st) {
-      AppLogger.error('加载最佳成绩失败: $e\n$st');
-      _cachedBestScore = null;
-      isBestScoreLoaded = true;
-      notifyListeners();
-    }
-  }
+  Future<void> loadBestScore([String? difficulty]) => _bestScoreController.load(
+    currentDifficulty: gameState.difficulty,
+    difficulty: difficulty,
+  );
 
   // Mixin 需要的 getter/setter 实现
   @override
@@ -292,15 +280,18 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 当设置变化时调用
   @protected
   void onSettingsChanged() {
+    unawaited(_refreshAutoMarkCandidatesAfterChange());
+  }
+
+  Future<void> _refreshAutoMarkCandidatesAfterChange() async {
+    if (!gameState.isAutoMarkMode || !isPlaying) return;
+
     if (isSamuraiGame) {
-      if (gameState.isAutoMarkMode && isPlaying) {
-        autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-      }
-    } else {
-      if (gameState.isAutoMarkMode && isPlaying) {
-        autoMarkCandidates();
-      }
+      await autoMarkCandidates(visibleSubBoards: [_samuraiController.currentSubGridIndex]);
+      return;
     }
+
+    await autoMarkCandidates();
   }
 
   // ========== 游戏生命周期方法（委托给 Mixin）==========
@@ -320,9 +311,6 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   /// 保存游戏状态（异步）
   Future<void> saveGame() => saveGameInternal();
 
-  /// 保存游戏状态（同步）
-  void saveGameSync() => saveGameFireAndForget();
-
   /// 保存游戏状态（同步阻塞，等待保存完成）
   Future<void> saveGameBlocking() => saveGameSyncBlocking();
 
@@ -331,8 +319,7 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     await loadGameInternal();
     
     if (isSamuraiGame) {
-      _currentSubGridIndex = 4;
-      _isOverviewMode = false;
+      _samuraiController.resetState();
     }
     
     await loadBestScore();
@@ -374,100 +361,69 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   void selectCellByObject(Cell cell) => handleCellTap(cell.row, cell.col);
 
   /// 输入数字
-  void inputNumber(final int number) {
-    final selectedCell = gameState.getSelectedCell();
-    if (selectedCell != null) {
-      setCellValue(selectedCell.row, selectedCell.col, number);
+  Future<void> inputNumber(final int number) async => _inputController.inputNumber(number);
+
+  /// 同步 Samurai 模式状态
+  void _syncSamuraiModeState() {
+    if (!isSamuraiGame) return;
+    _samuraiController.resetState();
+  }
+
+  /// 在状态更新后统一处理自动标记、完成判定和保存
+  Future<void> _finalizeBoardMutation({bool shouldSave = true}) async {
+    if (gameState.isCompleted) {
+      gameTimer.pause();
+      if (PlatformDispatcher.instance.implicitView != null) {
+        final audioManager = AudioManager();
+        await audioManager.playCompleteSound();
+      }
+    }
+
+    notifyListeners();
+
+    await _refreshAutoMarkCandidatesAfterChange();
+
+    if (shouldSave) {
+      await saveGame();
     }
   }
 
   /// 设置单元格值
+  @override
   Future<void> setCellValue(
     final int row,
     final int col,
     final int? value,
-  ) async {
-    if (!isPlaying) return;
-    try {
-      await setCellValueInternal(row, col, value);
+  ) async => _mutationController.setCellValue(row, col, value);
 
-      // 检查游戏是否完成
-      if (gameState.isCompleted) {
-        gameTimer.pause();
-        if (PlatformDispatcher.instance.implicitView != null) {
-          final audioManager = AudioManager();
-          await audioManager.playCompleteSound();
-        }
-      }
-
-      notifyListeners();
-
-      // 自动标记模式下重新计算候选数
-      if (gameState.isAutoMarkMode && isPlaying) {
-        if (isSamuraiGame) {
-          await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-        } else {
-          await autoMarkCandidates();
-        }
-      }
-
-      await saveGame();
-    } catch (e) {
-      _handleError('设置单元格值失败', e);
-    }
-  }
+  /// 数字输入是否正在处理中（防止快速连点导致异步操作交错执行）
+  bool _isNumberInputBusy = false;
 
   /// 设置当前选中单元格的值
   Future<void> setCellValueByNumber(int? value) async {
-    if (!isPlaying) return;
-    final selectedCell = gameState.getSelectedCell();
-    if (selectedCell != null) {
-      if (gameState.isMarkMode && value != null) {
-        await toggleCandidate(selectedCell.row, selectedCell.col, value);
-      } else {
-        await setCellValue(selectedCell.row, selectedCell.col, value);
-      }
+    if (!isPlaying || _isNumberInputBusy) return;
+    _isNumberInputBusy = true;
+    try {
+      await _inputController.setValueByNumber(value);
+    } finally {
+      _isNumberInputBusy = false;
     }
   }
 
   /// 切换候选数标记
+  @override
   Future<void> toggleCandidate(
     final int row,
     final int col,
     final int candidate,
-  ) async {
-    if (!isPlaying) return;
-    try {
-      await toggleCandidateInternal(row, col, candidate);
-      notifyListeners();
-      await saveGame();
-    } catch (e) {
-      _handleError('切换候选数失败', e);
-    }
-  }
+  ) async => _mutationController.toggleCandidate(row, col, candidate);
 
   /// 清除输入
   Future<void> clearInput() => onClear();
 
   /// 清除当前选中单元格的值
-  Future<void> clearCellValue() async {
-    final selectedCell = gameState.getSelectedCell();
-    if (selectedCell != null) {
-      await clearCellInternal(selectedCell.row, selectedCell.col);
-      notifyListeners();
-
-      // 自动标记模式下重新计算候选数
-      if (gameState.isAutoMarkMode && isPlaying) {
-        if (isSamuraiGame) {
-          await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-        } else {
-          await autoMarkCandidates();
-        }
-      }
-
-      await saveGame();
-    }
-  }
+  @override
+  Future<void> clearCellValue() async => _mutationController.clearCellValue();
 
   // ========== 功能键盘相关方法（委托给 Mixin）==========
 
@@ -518,11 +474,7 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     notifyListeners();
 
     if (gameState.isAutoMarkMode && isPlaying) {
-      if (isSamuraiGame) {
-        await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-      } else {
-        await autoMarkCandidates();
-      }
+      await _refreshAutoMarkCandidatesAfterChange();
     } else if (!gameState.isAutoMarkMode) {
       await clearAllCandidates();
     }
@@ -541,32 +493,24 @@ class GameViewModel<B extends Board> extends ChangeNotifier
 
     final newState = await gameService.generateGame(
       difficulty: difficulty,
-      onStageUpdate: updateGenerationStage,
+      options: {'isCancelled': () => isCancelled},
+      onStageUpdate: (stage) {
+        if (!isCancelled) updateGenerationStage(stage);
+      },
     );
 
+    if (isCancelled) return;
+
     gameState = newState;
-
-    if (isSamuraiGame) {
-      _currentSubGridIndex = 4; // 默认显示中心网格
-      _isOverviewMode = false;
-    }
-
+    _syncSamuraiModeState();
     notifyListeners();
-
-    gameTimer.start();
-    unawaited(loadBestScore());
   }
 
   /// 重置游戏状态
   @protected
   Future<void> resetGameState() async {
     gameState = _createInitialState<B>(_createEmptyBoard(), _regionMatrix);
-
-    if (isSamuraiGame) {
-      _currentSubGridIndex = 4; // 默认显示中心网格
-      _isOverviewMode = false;
-    }
-
+    _syncSamuraiModeState();
     notifyListeners();
   }
 
@@ -581,30 +525,16 @@ class GameViewModel<B extends Board> extends ChangeNotifier
         selectedCell.col,
         null,
       );
-
-      if (gameState.isAutoMarkMode && isPlaying) {
-        if (isSamuraiGame) {
-          await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-        } else {
-          await autoMarkCandidates();
-        }
-      }
     } else if (selectedCell.candidates.isNotEmpty) {
       final command = ClearCandidatesCommand(
         row: selectedCell.row,
         col: selectedCell.col,
       );
       gameState = gameService.updateBoardWithCommand(gameState, command);
-
-      if (gameState.isAutoMarkMode && isPlaying) {
-        if (isSamuraiGame) {
-          await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-        } else {
-          await autoMarkCandidates();
-        }
-      }
     }
+
     notifyListeners();
+    await _refreshAutoMarkCandidatesAfterChange();
   }
 
   /// 开始自定义游戏（仅 standard 和 diagonal 支持）
@@ -643,7 +573,7 @@ class GameViewModel<B extends Board> extends ChangeNotifier
       // Samurai 仅计算当前子网格的数字计数
       final samuraiBoard = gameState.board;
       if (samuraiBoard is SamuraiBoard) {
-        final subBoard = samuraiBoard.getSubBoard(currentSubGridIndex);
+        final subBoard = samuraiBoard.getSubBoard(_samuraiController.currentSubGridIndex);
         int count = 0;
         for (int i = 0; i < subBoard.size; i++) {
           for (int j = 0; j < subBoard.size; j++) {
@@ -699,27 +629,7 @@ class GameViewModel<B extends Board> extends ChangeNotifier
         isMarkMode: false,
       );
       gameState = newState;
-
-      if (gameState.isCompleted) {
-        gameTimer.pause();
-        if (PlatformDispatcher.instance.implicitView != null) {
-          final audioManager = AudioManager();
-          await audioManager.playCompleteSound();
-        }
-      }
-
-      notifyListeners();
-
-      // 自动候选数模式下重新计算候选数
-      if (gameState.isAutoMarkMode && isPlaying) {
-        if (isSamuraiGame) {
-          await autoMarkCandidates(visibleSubBoards: [currentSubGridIndex]);
-        } else {
-          await autoMarkCandidates();
-        }
-      }
-
-      await saveGame();
+      await _finalizeBoardMutation();
     } catch (e) {
       _handleError('设置提示值失败', e);
     }

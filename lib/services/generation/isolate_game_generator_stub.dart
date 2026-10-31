@@ -12,6 +12,7 @@ class IsolateGameGenerator {
     required int size,
     Function(GenerationStage)? onStageUpdate,
     Map<String, dynamic>? templateData,
+    bool Function()? isCancelled,
   }) async {
     throw UnsupportedError('dart:isolate is not supported on Web platform');
   }

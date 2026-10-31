@@ -383,7 +383,7 @@ class CustomGameScreenState<
               children: [
                 SizedBox(
                   height: layout.keypadHeight / 2,
-                  child: CustomFunKeyboard(
+                  child: CustomGameKeyboard(
                     onStartGame: _validateAndStartGame,
                     onClearBoard: _showClearConfirmDialog,
                     isValidating: _isValidating,
@@ -457,7 +457,7 @@ class CustomGameScreenState<
               children: [
                 SizedBox(
                   width: layout.keypadWidth / 2,
-                  child: CustomFunKeyboard(
+                  child: CustomGameKeyboard(
                     onStartGame: _validateAndStartGame,
                     onClearBoard: _showClearConfirmDialog,
                     isValidating: _isValidating,

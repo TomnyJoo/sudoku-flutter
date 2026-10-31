@@ -302,7 +302,7 @@ class _IndividualGamesTabState extends State<IndividualGamesTab> {
                 // Trigger a refresh
                 await Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (context) => const GameStatisticsScreen(),
+                    builder: (context) => const StatisticsScreen(),
                   ),
                 );
               }

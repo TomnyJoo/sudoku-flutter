@@ -4,9 +4,9 @@ import 'package:sudoku/constants/app_constants.dart';
 import 'package:sudoku/models/cell.dart';
 
 /// 通用棋盘组件基类，严格遵循标准数独布局实现，接受精确的cellSize参数，使用CustomPaint提升性能
-abstract class GameBoardWidget<T extends Cell> extends StatefulWidget {
+abstract class BoardWidgetBase<T extends Cell> extends StatefulWidget {
 
-  const GameBoardWidget({
+  const BoardWidgetBase({
     required this.cellSize,
     this.boardSize = AppConstants.standardBoardSize,
     super.key,
@@ -17,7 +17,7 @@ abstract class GameBoardWidget<T extends Cell> extends StatefulWidget {
   final int boardSize;
 
   @override
-  State<GameBoardWidget<T>> createState() => _GameBoardWidgetState<T>();
+  State<BoardWidgetBase<T>> createState() => _BoardWidgetBaseState<T>();
 
   /// 创建棋盘绘制器（子类必须实现）
   @protected
@@ -28,7 +28,7 @@ abstract class GameBoardWidget<T extends Cell> extends StatefulWidget {
   void onCellTap(int row, int col);
 }
 
-class _GameBoardWidgetState<T extends Cell> extends State<GameBoardWidget<T>> {
+class _BoardWidgetBaseState<T extends Cell> extends State<BoardWidgetBase<T>> {
   final GlobalKey _boardKey = GlobalKey();
 
   @override

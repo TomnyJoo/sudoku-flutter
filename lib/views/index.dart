@@ -1,7 +1,8 @@
-// Views barrel export
-export 'completion_page.dart';
-export 'custom_game_page.dart';
-export 'game_page.dart';
-export 'home_page.dart';
-export 'settings_page.dart';
-export 'statistics_page.dart';
+// Views feature exports
+export 'boards/index.dart';
+export 'completion/index.dart';
+export 'custom_game/custom_game_screen.dart';
+export 'game/index.dart';
+export 'home/home_screen.dart';
+export 'settings/settings_screen.dart';
+export 'statistics/index.dart';

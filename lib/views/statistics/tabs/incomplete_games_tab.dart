@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sudoku/index.dart';
 import 'package:sudoku/main.dart';
 
@@ -14,6 +15,7 @@ class IncompleteGamesTab extends StatefulWidget {
 class _IncompleteGamesTabState extends State<IncompleteGamesTab> {
   List<SavedGameInfo> _savedGames = [];
   bool _isLoading = true;
+  bool _hasLoadError = false;
 
   @override
   void initState() {
@@ -28,13 +30,18 @@ class _IncompleteGamesTabState extends State<IncompleteGamesTab> {
 
     try {
       final savedGames = await GameStorageService.getSavedGameInfos();
+      if (!mounted) return;
       setState(() {
         _savedGames = savedGames;
         _isLoading = false;
+        _hasLoadError = false;
       });
-    } catch (e) {
+    } catch (error, stackTrace) {
+      AppLogger.error('加载未完成游戏存档失败', error, stackTrace);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _hasLoadError = true;
       });
     }
   }
@@ -47,6 +54,20 @@ class _IncompleteGamesTabState extends State<IncompleteGamesTab> {
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasLoadError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text(l10n.failedToLoadSavedGames),
+            TextButton(onPressed: _loadSavedGames, child: Text(l10n.retry)),
+          ],
+        ),
+      );
     }
 
     if (incompleteGames.isEmpty && _savedGames.isEmpty) {
@@ -213,34 +234,59 @@ class _IncompleteGamesTabState extends State<IncompleteGamesTab> {
 
   Future<void> _continueGame(SavedGameInfo savedGame) async {
     try {
-      final gameType = GameType.values.firstWhere(
-        (type) => type.toString().split('.').last == savedGame.gameType,
-        orElse: () => GameType.standard,
-      );
+      final gameType = GameType.fromName(savedGame.gameType);
 
       // 创建游戏服务
-      final service = GameFactory.createGameService(gameType, GameValidator());
+      final service = GameFactory.createGameService(
+        gameType,
+        context.read<GameValidator>(),
+      );
       // 加载游戏状态
       final savedState = await service.loadGameState(savedGame.saveKey);
       if (savedState != null && mounted) {
         // 获取游戏路由
         final route = GameFactory.getGameRoute(gameType);
         // 导航到游戏页面并传入保存的游戏状态
-        await Navigator.pushNamed(context, route, arguments: GameRouteArgs(gameType: gameType, initialState: savedState));
+        await Navigator.pushNamed(
+          context,
+          route,
+          arguments: GameRouteArgs(
+            gameType: gameType,
+            initialState: savedState,
+          ),
+        );
       }
-    } catch (e) {
-      AppLogger.error('继续游戏失败', e, StackTrace.current);
+    } catch (error, stackTrace) {
+      AppLogger.error('继续游戏失败', error, stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToLoadSavedGames),
+          ),
+        );
+      }
     }
   }
 
   Future<void> _deleteSavedGame(SavedGameInfo savedGame) async {
-    await GameStorageService.clearGameState(savedGame.saveKey);
-    await _loadSavedGames();
+    try {
+      await GameStorageService.clearGameState(savedGame.saveKey);
+      await _loadSavedGames();
+    } catch (error, stackTrace) {
+      AppLogger.error('删除游戏存档失败', error, stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).operationFailed)),
+        );
+      }
+    }
   }
 
   String _getGameName(String gameType, GameLocalizations localization) {
     try {
-      final gameTypeEnum = GameType.values.firstWhere((e) => e.name == gameType);
+      final gameTypeEnum = GameType.values.firstWhere(
+        (e) => e.name == gameType,
+      );
       return gameTypeEnum.getLocalizedName(localization);
     } catch (e) {
       // 如果转换失败，返回原始字符串
@@ -250,7 +296,9 @@ class _IncompleteGamesTabState extends State<IncompleteGamesTab> {
 
   String _getDifficultyName(String difficulty, AppLocalizations l10n) {
     try {
-      final difficultyEnum = Difficulty.values.firstWhere((e) => e.name == difficulty);
+      final difficultyEnum = Difficulty.values.firstWhere(
+        (e) => e.name == difficulty,
+      );
       return difficultyEnum.config.getLocalizedDifficultyName(l10n);
     } catch (e) {
       // 如果转换失败，返回原始字符串
