@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sudoku/constants/app_constants.dart';
 
 /// 应用设置
 class AppSettings extends ChangeNotifier {
@@ -10,6 +11,7 @@ class AppSettings extends ChangeNotifier {
   bool _autoCheckEnabled = true;
   bool _highlightMistakesEnabled = true;
   bool _useAdvancedStrategy = true;
+  double _screenEdgeMargin = AppConstants.defaultScreenEdgeMargin;
 
   // ========== 常量 ==========
   static const String _musicKey = 'app_music';
@@ -18,6 +20,7 @@ class AppSettings extends ChangeNotifier {
   static const String _autoCheckKey = 'game_auto_check';
   static const String _highlightMistakesKey = 'game_highlight_mistakes';
   static const String _useAdvancedStrategyKey = 'game_use_advanced_strategy';
+  static const String _screenEdgeMarginKey = 'ui_screen_edge_margin';
   
   // ========== 获取器 ==========
   bool get musicEnabled => _musicEnabled;
@@ -26,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   bool get autoCheckEnabled => _autoCheckEnabled;
   bool get highlightMistakesEnabled => _highlightMistakesEnabled;
   bool get useAdvancedStrategy => _useAdvancedStrategy;
+  double get screenEdgeMargin => _screenEdgeMargin;
 
   // ========== 方法 ==========
   Future<void> loadSettings() async {
@@ -48,6 +52,11 @@ class AppSettings extends ChangeNotifier {
       true
     );
     _useAdvancedStrategy = prefs.getBool(_useAdvancedStrategyKey) ?? true;
+
+    _screenEdgeMargin = _clampScreenEdgeMargin(
+      prefs.getDouble(_screenEdgeMarginKey) ??
+          AppConstants.defaultScreenEdgeMargin,
+    );
 
     notifyListeners();
   }
@@ -109,6 +118,19 @@ class AppSettings extends ChangeNotifier {
     await prefs.setBool(_useAdvancedStrategyKey, value);
     notifyListeners();
   }
+
+  Future<void> setScreenEdgeMargin(double value) async {
+    final margin = _clampScreenEdgeMargin(value);
+    if (margin == _screenEdgeMargin) return;
+    _screenEdgeMargin = margin;
+    // 先通知 UI 立即刷新滑块，再异步持久化
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_screenEdgeMarginKey, margin);
+  }
+
+  double _clampScreenEdgeMargin(double value) =>
+      value.clamp(0.0, AppConstants.maxScreenEdgeMargin);
 
 
 

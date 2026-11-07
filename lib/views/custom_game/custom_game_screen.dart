@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sudoku/index.dart';
 import 'package:sudoku/renderers/layout_calculator.dart';
 
@@ -99,6 +100,7 @@ class CustomGameScreenState<
 
       final layout = LayoutCalculator.calculateStandardLayout(
         Size(gameAreaWidth, gameAreaHeight),
+        edgeMargin: context.watch<AppSettings>().screenEdgeMargin,
       );
 
       return Scaffold(

@@ -52,33 +52,77 @@ class LayoutCalculator {
   /// 键盘底部外边距
   static const double keypadBottomMargin = AppConstants.keypadBottomMargin;
 
-  /// 键盘水平外边距（避开 Android 屏幕左右边缘返回手势区）
+  /// 键盘水平外边距默认值（实际值来自用户设置，见 AppSettings.screenEdgeMargin）
   static const double keypadHorizontalMargin = AppConstants.keypadHorizontalMargin;
 
   static GameLayout calculateOptimalLayout(
     final Size gameAreaSize, {
     int boardSize = 9,
+    double edgeMargin = keypadHorizontalMargin,
   }) {
     final strategy = gameAreaSize.width >= gameAreaSize.height
         ? const HorizontalLayoutStrategy()
         : const VerticalLayoutStrategy();
-    return strategy.calculate(gameAreaSize, boardSize: boardSize);
+    return strategy.calculate(
+      gameAreaSize,
+      boardSize: boardSize,
+      edgeMargin: edgeMargin,
+    );
   }
 
-  static GameLayout _calculateVerticalLayout(final double width, final double height, final int boardSize) =>
-      const VerticalLayoutStrategy().calculate(Size(width, height), boardSize: boardSize);
+  static GameLayout _calculateVerticalLayout(
+    final double width,
+    final double height,
+    final int boardSize,
+    final double edgeMargin,
+  ) =>
+      const VerticalLayoutStrategy().calculate(
+        Size(width, height),
+        boardSize: boardSize,
+        edgeMargin: edgeMargin,
+      );
 
-  static GameLayout _calculateHorizontalLayout(final double width, final double height, final int boardSize) =>
-      const HorizontalLayoutStrategy().calculate(Size(width, height), boardSize: boardSize);
+  static GameLayout _calculateHorizontalLayout(
+    final double width,
+    final double height,
+    final int boardSize,
+    final double edgeMargin,
+  ) =>
+      const HorizontalLayoutStrategy().calculate(
+        Size(width, height),
+        boardSize: boardSize,
+        edgeMargin: edgeMargin,
+      );
 
   /// 按指定尺寸强制计算左右布局（用于与实际可用区域保持方向一致）
-  static GameLayout calculateHorizontalLayout(final Size availableSize, {final int boardSize = 9}) =>
-    _calculateHorizontalLayout(availableSize.width, availableSize.height, boardSize);
+  static GameLayout calculateHorizontalLayout(
+    final Size availableSize, {
+    final int boardSize = 9,
+    final double edgeMargin = keypadHorizontalMargin,
+  }) =>
+      _calculateHorizontalLayout(
+        availableSize.width,
+        availableSize.height,
+        boardSize,
+        edgeMargin,
+      );
 
   /// 按指定尺寸强制计算上下布局（用于与实际可用区域保持方向一致）
-  static GameLayout calculateVerticalLayout(final Size availableSize, {final int boardSize = 9}) =>
-    _calculateVerticalLayout(availableSize.width, availableSize.height, boardSize);
+  static GameLayout calculateVerticalLayout(
+    final Size availableSize, {
+    final int boardSize = 9,
+    final double edgeMargin = keypadHorizontalMargin,
+  }) =>
+      _calculateVerticalLayout(
+        availableSize.width,
+        availableSize.height,
+        boardSize,
+        edgeMargin,
+      );
 
-  static GameLayout calculateStandardLayout(final Size availableSize) =>
-    calculateOptimalLayout(availableSize);
+  static GameLayout calculateStandardLayout(
+    final Size availableSize, {
+    final double edgeMargin = keypadHorizontalMargin,
+  }) =>
+    calculateOptimalLayout(availableSize, edgeMargin: edgeMargin);
 }

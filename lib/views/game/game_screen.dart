@@ -171,8 +171,11 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
               MediaQuery.of(context).padding.top -
               AppConstants.gameAreaHeightOffset;
 
+          final edgeMargin = context.watch<AppSettings>().screenEdgeMargin;
+
           final layout = LayoutCalculator.calculateStandardLayout(
             Size(gameAreaWidth, gameAreaHeight),
+            edgeMargin: edgeMargin,
           );
 
           final isDarkMode = context.isDarkMode;
@@ -203,7 +206,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
                 // 顶部由 AppBar 处理，这里只保留底部/侧边安全区，
                 // 防止上下布局的键盘底部落入 Android 系统手势/导航区域
                 top: false,
-                child: _buildGameLayout(context, layout),
+                child: _buildGameLayout(context, layout, edgeMargin),
               ),
             ),
           );
@@ -379,7 +382,11 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
     ];
   }
 
-  Widget _buildGameLayout(BuildContext context, GameLayout layout) =>
+  Widget _buildGameLayout(
+    BuildContext context,
+    GameLayout layout,
+    double edgeMargin,
+  ) =>
       Selector<GameViewModel<B>, bool>(
     selector: (_, vm) => vm.isLoading,
     builder: (context, isLoading, _) {
@@ -398,6 +405,7 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
                   context,
                   LayoutCalculator.calculateHorizontalLayout(
                     constraints.biggest,
+                    edgeMargin: edgeMargin,
                   ),
                   constraints,
                 ),
@@ -413,7 +421,10 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
               child: LayoutBuilder(
                 builder: (context, constraints) => _buildGameArea(
                   context,
-                  LayoutCalculator.calculateVerticalLayout(constraints.biggest),
+                  LayoutCalculator.calculateVerticalLayout(
+                    constraints.biggest,
+                    edgeMargin: edgeMargin,
+                  ),
                   constraints,
                 ),
               ),

@@ -8,6 +8,7 @@ abstract class GameLayoutStrategy {
   GameLayout calculate(
     Size gameAreaSize, {
     int boardSize = 9,
+    double edgeMargin = LayoutCalculator.keypadHorizontalMargin,
   });
 }
 
@@ -18,10 +19,11 @@ class HorizontalLayoutStrategy extends GameLayoutStrategy {
   GameLayout calculate(
     Size gameAreaSize, {
     int boardSize = 9,
+    double edgeMargin = LayoutCalculator.keypadHorizontalMargin,
   }) {
     final width = gameAreaSize.width;
     final height = gameAreaSize.height;
-    final availableWidth = width - LayoutCalculator.keypadHorizontalMargin * 2;
+    final availableWidth = width - edgeMargin * 2;
 
     var boardPixelSize = (availableWidth - LayoutCalculator.spacing) / 1.5;
     if (boardPixelSize > height) {
@@ -65,10 +67,11 @@ class VerticalLayoutStrategy extends GameLayoutStrategy {
   GameLayout calculate(
     Size gameAreaSize, {
     int boardSize = 9,
+    double edgeMargin = LayoutCalculator.keypadHorizontalMargin,
   }) {
     final width = gameAreaSize.width;
     final height = gameAreaSize.height;
-    final availableWidth = width - LayoutCalculator.keypadHorizontalMargin * 2;
+    final availableWidth = width - edgeMargin * 2;
 
     var boardPixelSize = (height - LayoutCalculator.spacing - LayoutCalculator.keypadBottomMargin) / 1.5;
     if (boardPixelSize > availableWidth) {
@@ -112,10 +115,15 @@ class StandardGameLayoutStrategy extends GameLayoutStrategy {
   GameLayout calculate(
     Size gameAreaSize, {
     int boardSize = 9,
+    double edgeMargin = LayoutCalculator.keypadHorizontalMargin,
   }) {
     final strategy = gameAreaSize.width >= gameAreaSize.height
         ? const HorizontalLayoutStrategy()
         : const VerticalLayoutStrategy();
-    return strategy.calculate(gameAreaSize, boardSize: boardSize);
+    return strategy.calculate(
+      gameAreaSize,
+      boardSize: boardSize,
+      edgeMargin: edgeMargin,
+    );
   }
 }
