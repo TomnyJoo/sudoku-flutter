@@ -136,11 +136,6 @@ class AppLocalizations {
   String get settingsThemeSystem => getString('settingsThemeSystem') ?? 'System';
   String get settingsAudio => getString('settingsAudio') ?? 'Audio';
   String get settingsMusic => getString('settingsMusic') ?? 'Music';
-  String get settingsScreenEdgeMargin =>
-      getString('settingsScreenEdgeMargin') ?? 'Screen Edge Margin';
-  String get settingsScreenEdgeMarginHint =>
-      getString('settingsScreenEdgeMarginHint') ??
-      'Increase the margin to keep the board and keypad away from screen edges and reduce accidental system back gestures';
   String get soundEffects => getString('soundEffects') ?? 'Sound Effects';
   String get selectSudokuType =>
       getString('selectSudokuType') ?? 'Select Sudoku Type';

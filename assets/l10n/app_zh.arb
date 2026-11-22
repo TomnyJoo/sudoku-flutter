@@ -268,12 +268,6 @@
   "@settingsMusic": {
     "description": "settingsMusic"
   },
-  "@settingsScreenEdgeMargin": {
-    "description": "settingsScreenEdgeMargin"
-  },
-  "@settingsScreenEdgeMarginHint": {
-    "description": "settingsScreenEdgeMarginHint"
-  },
   "@settingsTheme": {
     "description": "settingsTheme"
   },
@@ -589,8 +583,6 @@
   "settingsHighlightMistakes": "高亮错误",
   "settingsLanguage": "语言",
   "settingsMusic": "音乐",
-  "settingsScreenEdgeMargin": "屏幕边缘边距",
-  "settingsScreenEdgeMarginHint": "增大边距可让棋盘和键盘远离屏幕左右边缘，减少误触系统返回手势",
   "settingsTheme": "主题",
   "settingsThemeDark": "深色",
   "settingsThemeLight": "浅色",

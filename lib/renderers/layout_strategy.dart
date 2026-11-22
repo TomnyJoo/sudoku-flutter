@@ -23,12 +23,14 @@ class HorizontalLayoutStrategy extends GameLayoutStrategy {
   }) {
     final width = gameAreaSize.width;
     final height = gameAreaSize.height;
-    final availableWidth = width - edgeMargin * 2;
 
-    var boardPixelSize = (availableWidth - LayoutCalculator.spacing) / 1.5;
+    // 先按自然尺寸（不含边距）计算，再统一向内收缩边距。
+    // 若只在宽度约束中扣除边距，高度受限时（宽屏/横屏）边距将完全不可见。
+    var boardPixelSize = (width - LayoutCalculator.spacing) / 1.5;
     if (boardPixelSize > height) {
       boardPixelSize = height;
     }
+    boardPixelSize = max(0.0, boardPixelSize - edgeMargin * 2);
 
     final keypadHeight = boardPixelSize;
     final keypadWidth = boardPixelSize * 0.5;
@@ -71,12 +73,13 @@ class VerticalLayoutStrategy extends GameLayoutStrategy {
   }) {
     final width = gameAreaSize.width;
     final height = gameAreaSize.height;
-    final availableWidth = width - edgeMargin * 2;
 
+    // 与横屏策略一致：先求自然尺寸再内缩边距，保证边距始终可见生效
     var boardPixelSize = (height - LayoutCalculator.spacing - LayoutCalculator.keypadBottomMargin) / 1.5;
-    if (boardPixelSize > availableWidth) {
-      boardPixelSize = availableWidth;
+    if (boardPixelSize > width) {
+      boardPixelSize = width;
     }
+    boardPixelSize = max(0.0, boardPixelSize - edgeMargin * 2);
 
     final keypadWidth = boardPixelSize;
     final keypadHeight = boardPixelSize * 0.5;

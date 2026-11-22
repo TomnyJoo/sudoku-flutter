@@ -220,17 +220,9 @@ class AppConstants {
   /// 键盘底部外边距
   static const double keypadBottomMargin = 8.0;
 
-  /// 屏幕边缘边距默认值（保留极窄的系统手势安全区，不影响返回手势）
-  static const double defaultScreenEdgeMargin = 8.0;
-
-  /// 屏幕边缘边距最大值
-  static const double maxScreenEdgeMargin = 32.0;
-
-  /// 屏幕边缘边距调节步长
-  static const double screenEdgeMarginStep = 4.0;
-
-  /// 键盘水平外边距（默认值，实际使用用户设置值）
-  static const double keypadHorizontalMargin = defaultScreenEdgeMargin;
+  /// 键盘水平外边距默认值：实际生效边距由页面传入的系统手势区宽度决定，
+  /// 此处默认 0 仅在调用方未显式传值时作为兜底
+  static const double keypadHorizontalMargin = 0.0;
 
   /// 棋盘占可用高度的比例因子（竖屏）
   static const double boardHeightRatio = 1.5;

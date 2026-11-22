@@ -52,7 +52,7 @@ class LayoutCalculator {
   /// 键盘底部外边距
   static const double keypadBottomMargin = AppConstants.keypadBottomMargin;
 
-  /// 键盘水平外边距默认值（实际值来自用户设置，见 AppSettings.screenEdgeMargin）
+  /// 键盘水平外边距默认值（兜底为 0，实际边距由页面传入的系统手势区宽度决定）
   static const double keypadHorizontalMargin = AppConstants.keypadHorizontalMargin;
 
   static GameLayout calculateOptimalLayout(

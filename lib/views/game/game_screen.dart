@@ -30,6 +30,9 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
 
   bool _hasNavigatedToFinish = false;
 
+  /// 系统左右边缘手势区域宽度（逻辑像素），来自 WindowInsetsCompat
+  double _systemGestureMargin = 0;
+
   bool get _isDiagonalGame => _viewModel.gameService.gameType == 'diagonal';
   bool get _isJigsawGame => _viewModel.gameService.gameType == 'jigsaw';
   bool get _isSamuraiGame => _viewModel.gameService.gameType == 'samurai';
@@ -57,6 +60,21 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleInitialNavigation();
     });
+    unawaited(_loadSystemGestureMargin());
+  }
+
+  /// 读取系统手势区域，自动避开屏幕左右边缘的系统返回手势热区
+  Future<void> _loadSystemGestureMargin() async {
+    final margin = await SystemInsetsService.getHorizontalGestureMargin();
+    if (!mounted || margin == _systemGestureMargin) return;
+    setState(() => _systemGestureMargin = margin);
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // 旋转、分屏、手势导航模式切换后手势区域可能变化，重新读取
+    unawaited(_loadSystemGestureMargin());
   }
 
   void _handleInitialNavigation() {
@@ -171,7 +189,8 @@ class GameScreenState<B extends Board> extends State<GameScreen<B>>
               MediaQuery.of(context).padding.top -
               AppConstants.gameAreaHeightOffset;
 
-          final edgeMargin = context.watch<AppSettings>().screenEdgeMargin;
+          // 仅使用系统手势区宽度：桌面端无手势区 → 无边距；Android 端自动避让系统返回手势区
+          final edgeMargin = _systemGestureMargin;
 
           final layout = LayoutCalculator.calculateStandardLayout(
             Size(gameAreaWidth, gameAreaHeight),

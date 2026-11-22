@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sudoku/constants/app_constants.dart';
 
 /// 应用设置
 class AppSettings extends ChangeNotifier {
@@ -11,7 +10,6 @@ class AppSettings extends ChangeNotifier {
   bool _autoCheckEnabled = true;
   bool _highlightMistakesEnabled = true;
   bool _useAdvancedStrategy = true;
-  double _screenEdgeMargin = AppConstants.defaultScreenEdgeMargin;
 
   // ========== 常量 ==========
   static const String _musicKey = 'app_music';
@@ -20,8 +18,7 @@ class AppSettings extends ChangeNotifier {
   static const String _autoCheckKey = 'game_auto_check';
   static const String _highlightMistakesKey = 'game_highlight_mistakes';
   static const String _useAdvancedStrategyKey = 'game_use_advanced_strategy';
-  static const String _screenEdgeMarginKey = 'ui_screen_edge_margin';
-  
+
   // ========== 获取器 ==========
   bool get musicEnabled => _musicEnabled;
   bool get soundEffectsEnabled => _soundEffectsEnabled;
@@ -29,34 +26,28 @@ class AppSettings extends ChangeNotifier {
   bool get autoCheckEnabled => _autoCheckEnabled;
   bool get highlightMistakesEnabled => _highlightMistakesEnabled;
   bool get useAdvancedStrategy => _useAdvancedStrategy;
-  double get screenEdgeMargin => _screenEdgeMargin;
 
   // ========== 方法 ==========
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     _musicEnabled = prefs.getBool(_musicKey) ?? true;
     _soundEffectsEnabled = prefs.getBool(_soundEffectsKey) ?? true;
     _language = prefs.getString(_languageKey) ?? 'zh';
 
     _autoCheckEnabled = _loadBoolWithMigration(
-      prefs, 
-      _autoCheckKey, 
-      ['standard_auto_check', 'diagonal_auto_check', 'killer_auto_check', 'jigsaw_auto_check', 'window_auto_check'], 
+      prefs,
+      _autoCheckKey,
+      ['standard_auto_check', 'diagonal_auto_check', 'killer_auto_check', 'jigsaw_auto_check', 'window_auto_check'],
       true
     );
     _highlightMistakesEnabled = _loadBoolWithMigration(
-      prefs, 
-      _highlightMistakesKey, 
-      ['standard_highlight_mistakes', 'diagonal_highlight_mistakes', 'killer_highlight_mistakes', 'jigsaw_highlight_mistakes', 'window_highlight_mistakes'], 
+      prefs,
+      _highlightMistakesKey,
+      ['standard_highlight_mistakes', 'diagonal_highlight_mistakes', 'killer_highlight_mistakes', 'jigsaw_highlight_mistakes', 'window_highlight_mistakes'],
       true
     );
     _useAdvancedStrategy = prefs.getBool(_useAdvancedStrategyKey) ?? true;
-
-    _screenEdgeMargin = _clampScreenEdgeMargin(
-      prefs.getDouble(_screenEdgeMarginKey) ??
-          AppConstants.defaultScreenEdgeMargin,
-    );
 
     notifyListeners();
   }
@@ -65,7 +56,7 @@ class AppSettings extends ChangeNotifier {
     if (prefs.containsKey(newKey)) {
       return prefs.getBool(newKey) ?? defaultValue;
     }
-    
+
     for (final oldKey in oldKeys) {
       if (prefs.containsKey(oldKey)) {
         final value = prefs.getBool(oldKey) ?? defaultValue;
@@ -73,7 +64,7 @@ class AppSettings extends ChangeNotifier {
         return value;
       }
     }
-    
+
     return defaultValue;
   }
 
@@ -118,21 +109,4 @@ class AppSettings extends ChangeNotifier {
     await prefs.setBool(_useAdvancedStrategyKey, value);
     notifyListeners();
   }
-
-  Future<void> setScreenEdgeMargin(double value) async {
-    final margin = _clampScreenEdgeMargin(value);
-    if (margin == _screenEdgeMargin) return;
-    _screenEdgeMargin = margin;
-    // 先通知 UI 立即刷新滑块，再异步持久化
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_screenEdgeMarginKey, margin);
-  }
-
-  double _clampScreenEdgeMargin(double value) =>
-      value.clamp(0.0, AppConstants.maxScreenEdgeMargin);
-
-
-
-
 }

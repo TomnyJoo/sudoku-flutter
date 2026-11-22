@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:sudoku/index.dart';
 import 'package:sudoku/renderers/layout_calculator.dart';
 
@@ -42,15 +43,40 @@ class CustomGameScreenState<
   TBoard extends Board,
   TViewModel extends GameViewModel<TBoard>
 >
-    extends State<CustomGameScreen<TBoard, TViewModel>> {
+    extends State<CustomGameScreen<TBoard, TViewModel>>
+    with WidgetsBindingObserver {
   late List<List<Cell>> _board;
   Cell? _selectedCell;
   bool _isValidating = false;
 
+  /// 系统左右边缘手势区域宽度（逻辑像素），来自 WindowInsetsCompat
+  double _systemGestureMargin = 0;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeBoard();
+    unawaited(_loadSystemGestureMargin());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// 读取系统手势区域，自动避开屏幕左右边缘的系统返回手势热区
+  Future<void> _loadSystemGestureMargin() async {
+    final margin = await SystemInsetsService.getHorizontalGestureMargin();
+    if (!mounted || margin == _systemGestureMargin) return;
+    setState(() => _systemGestureMargin = margin);
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    unawaited(_loadSystemGestureMargin());
   }
 
   void _initializeBoard() {
@@ -98,9 +124,12 @@ class CustomGameScreenState<
           ? availableHeight - kToolbarHeight
           : availableHeight - kToolbarHeight - 60;
 
+      // 仅使用系统手势区宽度自动避让
+      final edgeMargin = _systemGestureMargin;
+
       final layout = LayoutCalculator.calculateStandardLayout(
         Size(gameAreaWidth, gameAreaHeight),
-        edgeMargin: context.watch<AppSettings>().screenEdgeMargin,
+        edgeMargin: edgeMargin,
       );
 
       return Scaffold(

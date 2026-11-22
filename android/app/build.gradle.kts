@@ -40,3 +40,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // WindowInsetsCompat：读取系统栏与手势区域
+    implementation("androidx.core:core-ktx:1.13.1")
+}

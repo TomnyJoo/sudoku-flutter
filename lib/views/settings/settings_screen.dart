@@ -100,8 +100,6 @@ class SettingsScreenState extends State<SettingsScreen>
             const SizedBox(height: 24),
             buildThemeSection(context, appSettings, isDarkMode),
             const SizedBox(height: 24),
-            buildScreenMarginSection(context, appSettings, isDarkMode),
-            const SizedBox(height: 24),
             buildAudioSection(context, appSettings, isDarkMode),
           ],
         ),
@@ -305,70 +303,6 @@ class SettingsScreenState extends State<SettingsScreen>
                     ),
                   ),
                 ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 构建屏幕边缘边距设置区域
-  Widget buildScreenMarginSection(
-    BuildContext context,
-    AppSettings appSettings,
-    bool isDarkMode,
-  ) {
-    final localization = LocalizationUtils.of(context);
-    final cardColor = isDarkMode ? AppColors.darkCard : AppColors.lightCard;
-    final titleColor = isDarkMode ? Colors.white : AppColors.darkText;
-    final hintColor = isDarkMode
-        ? Colors.white.withAlpha(153)
-        : AppColors.mutedText;
-    const activeColor = AppColors.buttonPrimary;
-
-    return Card(
-      color: cardColor,
-      elevation: isDarkMode ? 4 : 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  localization.settingsScreenEdgeMargin,
-                  style: TextStyle(
-                    fontSize: AppTextStyles.fontSizeButton,
-                    fontWeight: FontWeight.bold,
-                    color: titleColor,
-                  ),
-                ),
-                Text(
-                  '${appSettings.screenEdgeMargin.toStringAsFixed(0)} dp',
-                  style: const TextStyle(
-                    color: activeColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              localization.settingsScreenEdgeMarginHint,
-              style: TextStyle(fontSize: 12, color: hintColor),
-            ),
-            Slider(
-              value: appSettings.screenEdgeMargin,
-              max: AppConstants.maxScreenEdgeMargin,
-              divisions: (AppConstants.maxScreenEdgeMargin /
-                      AppConstants.screenEdgeMarginStep)
-                  .round(),
-              label: '${appSettings.screenEdgeMargin.toStringAsFixed(0)} dp',
-              activeColor: activeColor,
-              onChanged: appSettings.setScreenEdgeMargin,
             ),
           ],
         ),
