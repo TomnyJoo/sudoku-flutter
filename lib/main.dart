@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:sudoku/app_initializer.dart';
 import 'package:sudoku/index.dart';
 
+/// 应用全局路由观察者：监听路由返回事件，供首页在 didPopNext 时刷新数据
+final RouteObserver<ModalRoute> appRouteObserver = RouteObserver<ModalRoute>();
+
 /// Summary: 应用入口点
 void main() async {
   // 使用 runZonedGuarded 捕获所有异步错误
@@ -138,6 +141,8 @@ class _SudokuAppState extends State<SudokuApp> {
       home: const HomeScreen(),
       // 隐藏调试模式横幅
       debugShowCheckedModeBanner: false,
+      // 路由观察者：监听页面返回事件（用于首页返回时刷新数据）
+      navigatorObservers: [appRouteObserver],
       // 路由配置
       routes: {
         '/game': (context) {

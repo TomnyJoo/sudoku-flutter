@@ -14,7 +14,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, RouteAware {
   late final PageController _pageController;
   String _currentGameName = '';
   int _currentPage = 0;
@@ -54,7 +55,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) appRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void didPopNext() {
+    // 从其他页面返回首页时触发重建，确保难度页的存档状态按钮及时刷新
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     _pageController.dispose();
     _staggerController.dispose();
     super.dispose();
