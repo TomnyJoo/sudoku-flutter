@@ -17,21 +17,23 @@ abstract class GameMutationHost<B extends Board> {
 class GameMutationController<B extends Board> {
   GameMutationController({
     required GameMutationHost<B> owner,
-    required Future<void> Function({bool shouldSave}) finalizeMutation,
+    required Future<void> Function({bool shouldSave, bool valueChanged})
+        finalizeMutation,
     required void Function(String message, Object error) onError,
   })  : _owner = owner,
         _finalizeMutation = finalizeMutation,
         _onError = onError;
 
   final GameMutationHost<B> _owner;
-  final Future<void> Function({bool shouldSave}) _finalizeMutation;
+  final Future<void> Function({bool shouldSave, bool valueChanged})
+      _finalizeMutation;
   final void Function(String message, Object error) _onError;
 
   Future<void> setCellValue(int row, int col, int? value) async {
     if (!_owner.isPlaying) return;
     try {
       await _owner.setCellValueInternal(row, col, value);
-      await _finalizeMutation();
+      await _finalizeMutation(valueChanged: true);
     } catch (e) {
       _onError('设置单元格值失败', e);
     }
@@ -41,7 +43,8 @@ class GameMutationController<B extends Board> {
     if (!_owner.isPlaying) return;
     try {
       await _owner.toggleCandidateInternal(row, col, candidate);
-      await _finalizeMutation();
+      // 仅候选数变化，不触发全盘候选数重算，避免浪费性能并覆盖手动标记
+      await _finalizeMutation(valueChanged: false);
     } catch (e) {
       _onError('切换候选数失败', e);
     }
@@ -51,9 +54,11 @@ class GameMutationController<B extends Board> {
     final selectedCell = _owner.gameState.getSelectedCell();
     if (selectedCell == null) return;
 
+    // 清除的是"值"还是"候选数"决定是否需要重算候选数
+    final hadValue = selectedCell.value != null;
     try {
       await _owner.clearCellInternal(selectedCell.row, selectedCell.col);
-      await _finalizeMutation();
+      await _finalizeMutation(valueChanged: hadValue);
     } catch (e) {
       _onError('清除单元格值失败', e);
     }

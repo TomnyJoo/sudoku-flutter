@@ -370,7 +370,15 @@ class GameViewModel<B extends Board> extends ChangeNotifier
   }
 
   /// 在状态更新后统一处理自动标记、完成判定和保存
-  Future<void> _finalizeBoardMutation({bool shouldSave = true}) async {
+  ///
+  /// [valueChanged] 表示本次变更是否改变了单元格的"值"。
+  /// 仅值变化（填入/清除数字）才重算候选数；
+  /// 纯候选数变化（标记切换、清除标记）不重算，
+  /// 避免浪费性能并防止自动重算覆盖手动标记。
+  Future<void> _finalizeBoardMutation({
+    bool shouldSave = true,
+    bool valueChanged = true,
+  }) async {
     if (gameState.isCompleted) {
       gameTimer.pause();
       if (PlatformDispatcher.instance.implicitView != null) {
@@ -381,7 +389,9 @@ class GameViewModel<B extends Board> extends ChangeNotifier
 
     notifyListeners();
 
-    await _refreshAutoMarkCandidatesAfterChange();
+    if (valueChanged) {
+      await _refreshAutoMarkCandidatesAfterChange();
+    }
 
     if (shouldSave) {
       await saveGame();
@@ -418,10 +428,7 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     final int candidate,
   ) async => _mutationController.toggleCandidate(row, col, candidate);
 
-  /// 清除输入
-  Future<void> clearInput() => onClear();
-
-  /// 清除当前选中单元格的值
+  /// 清除当前选中单元格的值（有值清值，无值清候选数）
   @override
   Future<void> clearCellValue() async => _mutationController.clearCellValue();
 
@@ -512,29 +519,6 @@ class GameViewModel<B extends Board> extends ChangeNotifier
     gameState = _createInitialState<B>(_createEmptyBoard(), _regionMatrix);
     _syncSamuraiModeState();
     notifyListeners();
-  }
-
-  /// 处理清除操作
-  Future<void> onClear() async {
-    final selectedCell = gameState.getSelectedCell();
-    if (selectedCell == null || selectedCell.isFixed) return;
-
-    if (selectedCell.value != null) {
-      await setCellValueInternal(
-        selectedCell.row,
-        selectedCell.col,
-        null,
-      );
-    } else if (selectedCell.candidates.isNotEmpty) {
-      final command = ClearCandidatesCommand(
-        row: selectedCell.row,
-        col: selectedCell.col,
-      );
-      gameState = gameService.updateBoardWithCommand(gameState, command);
-    }
-
-    notifyListeners();
-    await _refreshAutoMarkCandidatesAfterChange();
   }
 
   /// 开始自定义游戏（仅 standard 和 diagonal 支持）

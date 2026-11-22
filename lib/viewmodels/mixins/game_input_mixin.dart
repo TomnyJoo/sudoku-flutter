@@ -31,7 +31,9 @@ mixin GameInputMixin<B extends Board, T extends GameState<B>> on ChangeNotifier 
       row: row,
       col: col,
       value: value,
-      isMarkMode: gameState.isMarkMode,
+      // 清除值（value == null）不是标记操作，必须走普通模式，
+      // 否则标记模式下 service 会将其当作候选数切换而静默丢弃
+      isMarkMode: gameState.isMarkMode && value != null,
     );
     gameState = newState;
     // 不调用 notifyListeners()，由调用者负责
